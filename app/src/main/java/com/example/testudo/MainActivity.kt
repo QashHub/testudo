@@ -51,6 +51,8 @@ class MainActivity : ComponentActivity() {
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Alerts : Screen("alerts")
+    object User : Screen("user")
+    object Cache : Screen("cache")
 }
 
 @Composable
@@ -80,6 +82,14 @@ fun TestudoApp() {
 
             composable(Screen.Alerts.route) {
                 AlertsScreen()
+            }
+
+            composable(Screen.User.route) {
+                UserScreen()
+            }
+
+            composable(Screen.Cache.route) {
+                CacheScreen()
             }
         }
     }
@@ -113,6 +123,69 @@ fun MainScreen(navController: NavHostController) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun UserScreen() {
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE)),
+        horizontalAlignment = Alignment.Start
+    ) {
+
+        Spacer(Modifier.height(24.dp))
+
+        Box(modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            TitleSection()
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            text = "Profile",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B),
+            modifier = Modifier.padding(start = 20.dp, bottom = 8.dp)
+        )
+
+        // My Account
+        ProfileCard(
+            title = "My Account",
+            subtitle = "example@gmail.com"
+        )
+
+        // Plan
+        ProfileCard(
+            title = "Free Plan",
+            subtitle = "Subscription: Active"
+        )
+
+        // About
+        ProfileCard(
+            title = "About",
+            leadingIcon = {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "i",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color.White
+                    )
+                }
+            }
+        )
     }
 }
 
@@ -152,7 +225,12 @@ fun SurroundingButtons(navController: NavHostController) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(80.dp)) {
             FeatureButton("AI Assist")
-            FeatureButton("Clean Cache")
+            FeatureButton(
+                "Clean Cache",
+                onClick = {
+                    navController.navigate(Screen.Cache.route)
+                }
+            )
         }
     }
 }
@@ -213,8 +291,11 @@ fun BottomNavBar(navController: NavHostController) {
             selected = currentRoute == Screen.Home.route,
             onClick = {
                 navController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Home.route)
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                    }
                     launchSingleTop = true
+                    restoreState = true
                 }
             },
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
@@ -222,8 +303,16 @@ fun BottomNavBar(navController: NavHostController) {
         )
 
         NavigationBarItem(
-            selected = false,
-            onClick = { },
+            selected = currentRoute == Screen.User.route,
+            onClick = {
+                navController.navigate(Screen.User.route) {
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
             icon = { Icon(Icons.Default.Person, contentDescription = "User") },
             label = { Text("User") }
         )
@@ -233,6 +322,127 @@ fun BottomNavBar(navController: NavHostController) {
             onClick = { },
             icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
             label = { Text("Settings") }
+        )
+    }
+}
+
+@Composable
+fun CacheScreen() {
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE)),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        Spacer(Modifier.height(24.dp))
+
+        TitleSection()
+
+        Spacer(Modifier.height(12.dp))
+
+        UsageCard()
+
+        Spacer(Modifier.height(12.dp))
+
+        CacheItem("WhatsApp", "128Mb")
+        CacheItem("Instagram", "64Mb")
+        CacheItem("Chrome", "32Mb")
+        CacheItem("Toggl", "18Mb")
+    }
+}
+
+@Composable
+fun CacheItem(
+    appName: String,
+    size: String
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(24.dp))
+    ) {
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .background(Color(0xFF8B1A1A))
+                .padding(20.dp)
+        ) {
+            Text(
+                "$appName\n$size",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .background(Color(0xFFB8860B))
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "Clean Cache",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun UsageCard() {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF8B1A1A))
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+
+        Column {
+            Text(
+                "Total Usage",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                "810Mb/1080Mb",
+                color = Color.White,
+                fontSize = 18.sp
+            )
+        }
+
+        UsageCircle("75%")
+    }
+}
+
+@Composable
+fun UsageCircle(percent: String) {
+
+    Box(
+        modifier = Modifier
+            .size(90.dp)
+            .clip(CircleShape)
+            .background(Color(0xFFB8860B)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            percent,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B)
         )
     }
 }
@@ -374,6 +584,50 @@ fun AlertItem(
     }
 }
 
+@Composable
+fun ProfileCard(
+    title: String,
+    subtitle: String? = null,
+    leadingIcon: (@Composable (() -> Unit))? = null,
+    onClick: () -> Unit = {}
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF8B1A1A))
+            .clickable { onClick() }
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        leadingIcon?.let {
+            Box(modifier = Modifier.padding(end = 12.dp)) {
+                it()
+            }
+        }
+
+        Column {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            subtitle?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = it,
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
+        }
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
@@ -388,6 +642,26 @@ fun AlertsPreview() {
 fun TestudoAppPreview() {
     TestudoTheme {
         TestudoApp()
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "User Screen Preview"
+)
+@Composable
+fun UserScreenPreview() {
+    TestudoTheme {
+        UserScreen()
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun CacheScreenPreview() {
+    TestudoTheme {
+        CacheScreen()
     }
 }
 
