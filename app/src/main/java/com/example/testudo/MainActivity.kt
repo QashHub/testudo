@@ -1,14 +1,26 @@
 package com.example.testudo
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import android.app.AppOpsManager
+import android.content.Context
+import android.os.Process
+import android.provider.Settings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.navigation.compose.*
 import androidx.navigation.NavHostController
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -34,18 +46,33 @@ import com.example.testudo.ui.theme.TestudoTheme
 //Initial UI Development Made by Andres any questions please ask.
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.e("APP_START_CHECK", "THIS VERSION OF MAINACTIVITY IS RUNNING")
 
         enableEdgeToEdge()
 
         setContent {
             TestudoTheme {
-                TestudoApp()
+                PermissionGate()
             }
         }
     }
+}
+
+fun hasUsageStatsPermission(context: Context): Boolean {
+    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+    val mode = appOps.checkOpNoThrow(
+        AppOpsManager.OPSTR_GET_USAGE_STATS,
+        Process.myUid(),
+        context.packageName
+    )
+    return mode == AppOpsManager.MODE_ALLOWED
+}
+
+fun requestUsageStatsPermission(context: Context) {
+    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+    context.startActivity(intent)
 }
 
 sealed class Screen(val route: String) {
@@ -53,6 +80,38 @@ sealed class Screen(val route: String) {
     object Alerts : Screen("alerts")
     object User : Screen("user")
     object Cache : Screen("cache")
+}
+
+@Composable
+fun PermissionGate() {
+
+    val context = LocalContext.current
+    var hasPermission by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        hasPermission = hasUsageStatsPermission(context)
+
+        if (!hasPermission) {
+            requestUsageStatsPermission(context)
+        }
+    }
+
+    if (hasPermission) {
+        TestudoApp()
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFD8CFAE)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "Please enable Usage Access for Testudo",
+                color = Color(0xFF5A3E2B),
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
 }
 
 @Composable
@@ -329,27 +388,67 @@ fun BottomNavBar(navController: NavHostController) {
 @Composable
 fun CacheScreen() {
 
+    val context = LocalContext.current
+    var cacheList by remember { mutableStateOf<List<AppCacheInfo>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+
+        val result = withContext(Dispatchers.IO) {
+            getAppsSortedByCache(context).take(20)
+        }
+
+        cacheList = result
+        isLoading = false
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE)),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color(0xFFD8CFAE))
     ) {
 
-        Spacer(Modifier.height(24.dp))
-
+        Spacer(Modifier.height(16.dp))
         TitleSection()
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         UsageCard()
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        CacheItem("WhatsApp", "128Mb")
-        CacheItem("Instagram", "64Mb")
-        CacheItem("Chrome", "32Mb")
-        CacheItem("Toggl", "18Mb")
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = 80.dp)
+            ) {
+                items(cacheList) { app ->
+                    CacheItem(
+                        appName = app.appName,
+                        size = formatBytes(app.cacheSizeBytes)
+                    )
+                }
+            }
+        }
+    }
+}
+
+fun formatBytes(bytes: Long): String {
+    val kb = bytes / 1024.0
+    val mb = kb / 1024.0
+    val gb = mb / 1024.0
+
+    return when {
+        gb >= 1 -> String.format("%.2f GB", gb)
+        mb >= 1 -> String.format("%.2f MB", mb)
+        kb >= 1 -> String.format("%.2f KB", kb)
+        else -> "$bytes B"
     }
 }
 
@@ -363,27 +462,42 @@ fun CacheItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(80.dp)
     ) {
+
 
         Box(
             modifier = Modifier
                 .weight(1f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp))
                 .background(Color(0xFF8B1A1A))
-                .padding(20.dp)
+                .padding(start = 20.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
-            Text(
-                "$appName\n$size",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            Column {
+                Text(
+                    text = appName,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                Text(
+                    text = size,
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
         }
+
 
         Box(
             modifier = Modifier
+                .width(130.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
                 .background(Color(0xFFB8860B))
-                .padding(horizontal = 20.dp, vertical = 20.dp),
+                .clickable { },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -402,7 +516,7 @@ fun UsageCard() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(28.dp))
             .background(Color(0xFF8B1A1A))
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -417,14 +531,39 @@ fun UsageCard() {
                 fontWeight = FontWeight.Bold
             )
 
+            Spacer(Modifier.height(4.dp))
+
             Text(
                 "810Mb/1080Mb",
                 color = Color.White,
-                fontSize = 18.sp
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
-        UsageCircle("75%")
+        Box(
+            modifier = Modifier
+                .size(90.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFB8860B))
+                .padding(4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(Color(0xFFB8860B)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "75%",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF5A3E2B)
+                )
+            }
+        }
     }
 }
 
