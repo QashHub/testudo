@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.testudo.ui.theme.TestudoTheme
 
 //Initial UI Development Made by Andres any questions please ask.
@@ -80,6 +81,7 @@ sealed class Screen(val route: String) {
     object Alerts : Screen("alerts")
     object User : Screen("user")
     object Cache : Screen("cache")
+    object Settings : Screen("settings")
 }
 
 @Composable
@@ -149,6 +151,11 @@ fun TestudoApp() {
 
             composable(Screen.Cache.route) {
                 CacheScreen()
+            }
+
+            composable(Screen.Settings.route) {
+                SettingsScreen(navController)
+
             }
         }
     }
@@ -376,11 +383,19 @@ fun BottomNavBar(navController: NavHostController) {
             label = { Text("User") }
         )
 
+
         NavigationBarItem(
-            selected = false,
-            onClick = { },
+            selected = currentRoute == Screen.Settings.route,
+            onClick = {
+                navController.navigate(Screen.Settings.route){
+                    popUpTo(navController.graph.startDestinationId) {saveState = true}
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
             icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-            label = { Text("Settings") }
+            label = { Text("Settings")}
+
         )
     }
 }
@@ -767,6 +782,79 @@ fun ProfileCard(
     }
 }
 
+@Composable
+fun SettingsScreen(navController: NavHostController) {
+    val settingsItem = listOf(
+        "Notifacation Reminder",
+        "Charging Optimization",
+        "Auto update virus database",
+        "Real-time protection",
+        "Privacy Policy"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE))
+    ) {
+        Spacer(Modifier.height(24.dp))
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            TitleSection()
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Back button
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF8B1A1A))
+                .clickable { navController.popBackStack() }
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = "< Settings",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Settings items list
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        )    {
+            settingsItem.forEach { item ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF8B1A1A))
+                        .clickable { }
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = item,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            }
+         }
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
@@ -829,3 +917,11 @@ fun BottomNavPreview() {
     }
 }
 
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun SettingsScreenPreview() {
+    TestudoTheme {
+        val navController = rememberNavController()
+        SettingsScreen(navController)
+    }
+}
