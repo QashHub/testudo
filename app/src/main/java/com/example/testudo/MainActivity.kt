@@ -1,5 +1,5 @@
 package com.example.testudo
-//abeer
+
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -82,6 +82,7 @@ sealed class Screen(val route: String) {
     object User : Screen("user")
     object Cache : Screen("cache")
     object Settings : Screen("settings")
+    object AIRiskReport : Screen("ai_risk_report")
 }
 
 @Composable
@@ -157,6 +158,11 @@ fun TestudoApp() {
                 SettingsScreen(navController)
 
             }
+            
+            composable(Screen.AIRiskReport.route){
+                AiRiskReportScreen(navController)
+            }
+
         }
     }
 }
@@ -188,7 +194,27 @@ fun MainScreen(navController: NavHostController) {
                         .align(Alignment.Center)
                 )
             }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF8B1A1A))
+                    .clickable { navController.navigate(Screen.AIRiskReport.route) }
+                    .padding(vertical = 18.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "AI Risk Report",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
         }
+
     }
 }
 
@@ -285,6 +311,7 @@ fun SurroundingButtons(navController: NavHostController) {
                     }
                 }
             )
+
 
             FeatureButton("Status")
         }
@@ -855,6 +882,141 @@ fun SettingsScreen(navController: NavHostController) {
     }
 }
 
+@Composable
+fun AiRiskReportScreen(navController: NavHostController) {
+
+    val appRisks = listOf(
+        Triple("WhatsApp", "Safe", 18),
+        Triple("Suspicious", "Suspicious", 51),
+        Triple("Torjan.Dropper", "Malicious", 92)
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE))
+    ) {
+        Spacer(Modifier.height(24.dp))
+
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            TitleSection()
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = "AI Risk Report",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF8B1A1A))
+                .clickable { navController.popBackStack() }
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = "< Back",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFFE8E1C8))
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFB8860B)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "18",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF5A3E2B)
+                    )
+                }
+
+                Spacer(Modifier.width(16.dp))
+
+                Column {
+                    Text(
+                        text = "Risk Level",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color(0xFF5A3E2B)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Most of your apps are safe but we found 2 suspicious apps and 1 malicious app.",
+                        fontSize = 14.sp,
+                        color = Color(0xFF5A3E2B)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            appRisks.forEach { (name, status, score) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFE8E1C8))
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color(0xFF8B1A1A)
+                        )
+                        Text(
+                            text = status,
+                            fontSize = 13.sp,
+                            color = Color(0xFF8B1A1A)
+                        )
+                    }
+                    Text(
+                        text = score.toString(),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color(0xFF5A3E2B)
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
@@ -923,5 +1085,14 @@ fun SettingsScreenPreview() {
     TestudoTheme {
         val navController = rememberNavController()
         SettingsScreen(navController)
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun AiRiskReportPreview() {
+    TestudoTheme {
+        val navController = rememberNavController()
+        AiRiskReportScreen(navController)
     }
 }
