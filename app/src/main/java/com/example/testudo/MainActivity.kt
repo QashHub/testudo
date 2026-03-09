@@ -473,12 +473,21 @@ fun CacheScreen() {
                 items(cacheList) { app ->
                     CacheItem(
                         appName = app.appName,
-                        size = formatBytes(app.cacheSizeBytes)
+                        size = formatBytes(app.cacheSizeBytes),
+                        packageName = app.packageName
                     )
                 }
             }
         }
     }
+}
+
+fun openAppCacheSettings(context: Context, packageName: String) {
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = android.net.Uri.parse("package:$packageName")
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    context.startActivity(intent)
 }
 
 fun formatBytes(bytes: Long): String {
@@ -497,8 +506,11 @@ fun formatBytes(bytes: Long): String {
 @Composable
 fun CacheItem(
     appName: String,
-    size: String
+    size: String,
+    packageName: String
 ) {
+
+    val context = LocalContext.current
 
     Row(
         modifier = Modifier
@@ -506,7 +518,6 @@ fun CacheItem(
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .height(80.dp)
     ) {
-
 
         Box(
             modifier = Modifier
@@ -532,14 +543,15 @@ fun CacheItem(
             }
         }
 
-
         Box(
             modifier = Modifier
                 .width(130.dp)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
                 .background(Color(0xFFB8860B))
-                .clickable { },
+                .clickable {
+                    openAppCacheSettings(context, packageName)
+                },
             contentAlignment = Alignment.Center
         ) {
             Text(
