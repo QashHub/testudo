@@ -221,63 +221,171 @@ fun MainScreen(navController: NavHostController) {
 @Composable
 fun UserScreen() {
 
+    var user by remember {
+        mutableStateOf(
+            User(
+                name = "John Doe",
+                email = "john@example.com",
+                phone = "+44 7123456789",
+                paymentDetails = "Visa •••• 1234",
+                isPremium = false
+            )
+        )
+    }
+
+    var editMode by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE)),
-        horizontalAlignment = Alignment.Start
+            .background(Color(0xFFD8CFAE))
+            .padding(20.dp)
     ) {
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
-        Box(modifier = Modifier.fillMaxWidth(),
+        Box(
+            modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
             TitleSection()
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         Text(
-            text = "Profile",
+            "User Profile",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B),
-            modifier = Modifier.padding(start = 20.dp, bottom = 8.dp)
+            color = Color(0xFF5A3E2B)
         )
 
-        // My Account
-        ProfileCard(
-            title = "My Account",
-            subtitle = "example@gmail.com"
-        )
+        Spacer(Modifier.height(20.dp))
 
-        // Plan
-        ProfileCard(
-            title = "Free Plan",
-            subtitle = "Subscription: Active"
-        )
+        EditableField("Name", user.name, editMode) {
+            user = user.copy(name = it)
+        }
 
-        // About
-        ProfileCard(
-            title = "About",
-            leadingIcon = {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color.Transparent),
-                    contentAlignment = Alignment.Center
+        EditableField("Email", user.email, editMode) {
+            user = user.copy(email = it)
+        }
+
+        EditableField("Phone", user.phone, editMode) {
+            user = user.copy(phone = it)
+        }
+
+        EditableField("Payment Details", user.paymentDetails, editMode) {
+            user = user.copy(paymentDetails = it)
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        PremiumToggle(user.isPremium) {
+            user = user.copy(isPremium = it)
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Button(
+                onClick = { editMode = !editMode },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B1A1A))
+            ) {
+                Text(if (editMode) "Cancel" else "Edit", color = Color.White)
+            }
+
+            if (editMode) {
+                Button(
+                    onClick = { editMode = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB8860B))
                 ) {
-                    Text(
-                        "i",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = Color.White
-                    )
+                    Text("Save", color = Color.White)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PremiumToggle(
+    isPremium: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFFE8E1C8))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+
+        Text(
+            "Premium Account",
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B)
         )
+
+        Switch(
+            checked = isPremium,
+            onCheckedChange = onToggle
+        )
+    }
+}
+
+@Composable
+fun EditableField(
+    label: String,
+    value: String,
+    editable: Boolean,
+    onValueChange: (String) -> Unit
+) {
+
+    Column(modifier = Modifier.padding(bottom = 12.dp)) {
+
+        Text(
+            label,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B)
+        )
+
+        if (editable) {
+
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = Color(0xFF5A3E2B)
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF5A3E2B),
+                    unfocusedTextColor = Color(0xFF5A3E2B),
+                    focusedBorderColor = Color(0xFF8B1A1A),
+                    unfocusedBorderColor = Color(0xFF8B1A1A),
+                    cursorColor = Color(0xFF8B1A1A)
+                )
+            )
+
+        } else {
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFFE8E1C8))
+                    .padding(14.dp)
+            ) {
+                Text(
+                    value,
+                    color = Color(0xFF5A3E2B),
+                    fontSize = 16.sp
+                )
+            }
+        }
     }
 }
 
