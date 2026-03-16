@@ -1072,6 +1072,7 @@ fun SettingsSectionHeader(title: String){
         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
     )
 }
+//Functionality
 @Composable
 fun SettingsToggleItem(
     title: String,
