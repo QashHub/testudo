@@ -41,6 +41,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.testudo.ui.theme.TestudoTheme
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.scale
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Policy
 //AA
 //Initial UI Development Made by Andres any questions please ask.
 
@@ -966,92 +978,197 @@ fun SettingsScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(16.dp))
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
 
-            SettingsToggleItem(
-                title = "Notification Reminder",
-                subtitle = "Get reminders to scan your device",
-                checked = settings.notificationEnabled,
-                onCheckedChange = { settings = settings.copy(notificationEnabled = it) }
-            )
+            item{
+                SettingsSectionHeader(title = "Notifications")
+            }
 
-            SettingsToggleItem(
-                title = "Charging Optimization",
-                subtitle = "Optimize performance while charging",
-                checked = settings.chargingOptEnabled,
-                onCheckedChange = { settings = settings.copy(chargingOptEnabled = it) }
-            )
+            item{
+                SettingsToggleItem(
+                    title = "Notification Reminder",
+                    subtitle = "Get reminders to scan your device",
+                    expandedDetail = "Sends a daily reminder to run a security scan. Recommended to keep your device safe.",
+                    icon = Icons.Default.Notifications,
+                    checked = settings.notificationEnabled,
+                    onCheckedChange = { settings = settings.copy(notificationEnabled = it) }
+                )
+            }
 
-            SettingsToggleItem(
-                title = "Auto Update Virus Database",
-                subtitle = "Keep virus definitions up to date",
-                checked = settings.autoUpdateEnabled,
-                onCheckedChange = { settings = settings.copy(autoUpdateEnabled = it) }
-            )
+            item{
+                Spacer(Modifier.height(4.dp))
+                SettingsSectionHeader(title = "Performance")
+            }
 
-            SettingsToggleItem(
-                title = "Real-time Protection",
-                subtitle = "Monitor threats in the background",
-                checked = settings.realtimeProtEnabled,
-                onCheckedChange = { settings = settings.copy(realtimeProtEnabled = it) }
-            )
+            item{
+                SettingsToggleItem(
+                    title = "Charging Optimization",
+                    subtitle = "Optimize performance while charging",
+                    expandedDetail = "Runs heavy tasks only when your device is plugged-in to save battery life.",
+                    icon = Icons.Default.BatteryChargingFull,
+                    checked = settings.chargingOptEnabled,
+                    onCheckedChange = { settings = settings.copy(chargingOptEnabled = it) }
+                )
 
-            SettingsToggleItem(
-                title = "Privacy Policy",
-                subtitle = "Share anonymous usage data",
-                checked = settings.privacyPolicyEnabled,
-                onCheckedChange = { settings = settings.copy(privacyPolicyEnabled = it) }
-            )
+            }
+
+            item{
+                SettingsToggleItem(
+                    title = "Auto Update Virus Database",
+                    subtitle = "Keep virus definitions up to date",
+                    expandedDetail = "Automatically downloads the latest virus definitions in the background so scans are always accurate.",
+                    icon = Icons.Default.Autorenew,
+                    checked = settings.autoUpdateEnabled,
+                    onCheckedChange = { settings = settings.copy(autoUpdateEnabled = it) }
+                )
+
+            }
+
+            item{
+                Spacer(Modifier.height(4.dp))
+                SettingsSectionHeader(title = "Privacy")
+            }
+
+            item{
+                SettingsToggleItem(
+                    title = "Real-time Protection",
+                    subtitle = "Monitor threats in the background",
+                    expandedDetail = "Continuously monitors installed apps and file activity for suspicious behavior in real time.",
+                    icon = Icons.Default.Security,
+                    checked = settings.realtimeProtEnabled,
+                    onCheckedChange = { settings = settings.copy(realtimeProtEnabled = it) }
+                )
+
+            }
+
+            item{
+                SettingsToggleItem(
+                    title = "Privacy Policy",
+                    subtitle = "Share anonymous usage data",
+                    expandedDetail = "Allows Testudo to collect anonymous usage statistics to help inprove the app. No personal data is shared",
+                    icon = Icons.Default.Policy,
+                    checked = settings.privacyPolicyEnabled,
+                    onCheckedChange = { settings = settings.copy(privacyPolicyEnabled = it) }
+                )
+            }
         }
     }
 }
 
+
+@Composable
+fun SettingsSectionHeader(title: String){
+    Text(
+        text = title.uppercase(),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color(0xFF5A3E2B),
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+    )
+}
 @Composable
 fun SettingsToggleItem(
     title: String,
     subtitle: String,
+    expandedDetail: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Row(
+    var expanded by remember { mutableStateOf(false) }
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (checked) Color(0xFF8B1A1A) else Color(0xFF5A3E2B),
+        animationSpec = tween(durationMillis = 400),
+        label = "bgColor"
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (checked) 1f else 0.97f,
+        animationSpec = tween(durationMillis = 300),
+        label = "scale"
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
+            .scale(scale)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF8B1A1A))
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .background(backgroundColor)
+            .clickable { expanded = !expanded }
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Icon
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color(0xFFE8D5D5),
+                modifier = Modifier
+                    .size(28.dp)
+                    .padding(end = 4.dp)
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                color = Color(0xFFE8D5D5),
-                fontSize = 12.sp
+
+            Spacer(Modifier.width(12.dp))
+
+            // Title and subtitle
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    color = Color(0xFFE8D5D5),
+                    fontSize = 12.sp
+                )
+            }
+
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFFB8860B),
+                    uncheckedThumbColor = Color(0xFFD8CFAE),
+                    uncheckedTrackColor = Color(0xFF5A3E2B)
+                )
             )
         }
 
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFFB8860B),
-                uncheckedThumbColor = Color(0xFFD8CFAE),
-                uncheckedTrackColor = Color(0xFF5A3E2B)
-            )
-        )
+        // Expanded detail
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0x33000000))
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = expandedDetail,
+                    color = Color(0xFFE8D5D5),
+                    fontSize = 13.sp
+                )
+            }
+        }
     }
 }
 @Composable
