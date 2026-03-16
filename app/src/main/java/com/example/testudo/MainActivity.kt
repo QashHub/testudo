@@ -1,5 +1,4 @@
 package com.example.testudo
-
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -28,7 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -931,13 +929,8 @@ fun ProfileCard(
 
 @Composable
 fun SettingsScreen(navController: NavHostController) {
-    val settingsItem = listOf(
-        "Notifacation Reminder",
-        "Charging Optimization",
-        "Auto update virus database",
-        "Real-time protection",
-        "Privacy Policy"
-    )
+
+    var settings by remember { mutableStateOf(AppSettings()) }
 
     Column(
         modifier = Modifier
@@ -955,7 +948,6 @@ fun SettingsScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(8.dp))
 
-        // Back button
         Box(
             modifier = Modifier
                 .padding(horizontal = 16.dp)
@@ -974,34 +966,94 @@ fun SettingsScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(16.dp))
 
-        // Settings items list
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
-        )    {
-            settingsItem.forEach { item ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF8B1A1A))
-                        .clickable { }
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = item,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                }
-            }
-         }
+        ) {
+
+            SettingsToggleItem(
+                title = "Notification Reminder",
+                subtitle = "Get reminders to scan your device",
+                checked = settings.notificationEnabled,
+                onCheckedChange = { settings = settings.copy(notificationEnabled = it) }
+            )
+
+            SettingsToggleItem(
+                title = "Charging Optimization",
+                subtitle = "Optimize performance while charging",
+                checked = settings.chargingOptEnabled,
+                onCheckedChange = { settings = settings.copy(chargingOptEnabled = it) }
+            )
+
+            SettingsToggleItem(
+                title = "Auto Update Virus Database",
+                subtitle = "Keep virus definitions up to date",
+                checked = settings.autoUpdateEnabled,
+                onCheckedChange = { settings = settings.copy(autoUpdateEnabled = it) }
+            )
+
+            SettingsToggleItem(
+                title = "Real-time Protection",
+                subtitle = "Monitor threats in the background",
+                checked = settings.realtimeProtEnabled,
+                onCheckedChange = { settings = settings.copy(realtimeProtEnabled = it) }
+            )
+
+            SettingsToggleItem(
+                title = "Privacy Policy",
+                subtitle = "Share anonymous usage data",
+                checked = settings.privacyPolicyEnabled,
+                onCheckedChange = { settings = settings.copy(privacyPolicyEnabled = it) }
+            )
+        }
     }
 }
 
+@Composable
+fun SettingsToggleItem(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF8B1A1A))
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                color = Color(0xFFE8D5D5),
+                fontSize = 12.sp
+            )
+        }
+
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFFB8860B),
+                uncheckedThumbColor = Color(0xFFD8CFAE),
+                uncheckedTrackColor = Color(0xFF5A3E2B)
+            )
+        )
+    }
+}
 @Composable
 fun AiRiskReportScreen(navController: NavHostController) {
 
