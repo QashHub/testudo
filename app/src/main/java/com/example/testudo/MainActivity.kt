@@ -947,32 +947,39 @@ fun AlertItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .height(IntrinsicSize.Min)
     ) {
-
+        // Left side
         Box(
             modifier = Modifier
                 .weight(1f)
-                .background(Color(0xFFE6D9A8), RoundedCornerShape(topEnd = 40.dp))
-                .padding(12.dp)
+                .fillMaxHeight()
+                .background(Color(0xFFE6D9A8))
+                .padding(14.dp)
         ) {
             Text(
                 leftText,
-                color = Color.Black
+                color = Color(0xFF5A3E2B),
+                fontSize = 13.sp
             )
         }
 
+        // Right side
         Box(
             modifier = Modifier
                 .weight(1f)
+                .fillMaxHeight()
                 .background(Color(0xFF8B1A1A))
-                .padding(12.dp),
+                .padding(14.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 rightText,
                 color = Color.White,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
             )
         }
     }
