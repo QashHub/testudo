@@ -764,20 +764,103 @@ fun AlertsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE)),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color(0xFFD8CFAE))
     ) {
+        Spacer(Modifier.height(24.dp))
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            TitleSection()
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Header bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF8B1A1A))
+                .padding(14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "Alerts",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // No alerts card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFFE8E1C8))
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "No alerts available",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF5A3E2B),
+                    fontSize = 18.sp
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "You'll see important notifications here when they arrive.",
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFF5A3E2B),
+                    fontSize = 14.sp
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "✓  You're all caught up!",
+                    color = Color(0xFF8B1A1A),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        TitleSection()
+        // Previous alerts section title
+        Text(
+            "Previous Alerts",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B),
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
 
-        AlertsHeader()
+        Spacer(Modifier.height(12.dp))
 
-        NoAlertsSection()
+        // Alert items
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AlertItem(
+                leftText = "Poor network connection — AI processing may take longer than usual.",
+                rightText = "Check your internet connection."
+            )
 
-        PreviousAlertsSection()
+            AlertItem(
+                leftText = "Free up space to save AI results and continue using the app.",
+                rightText = "Storage space full"
+            )
+        }
     }
+
 }
 
 @Composable
