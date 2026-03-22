@@ -89,10 +89,48 @@ fun requestUsageStatsPermission(context: Context) {
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Alerts : Screen("alerts")
+    object Status : Screen("status")
     object User : Screen("user")
     object Cache : Screen("cache")
     object Settings : Screen("settings")
     object AIRiskReport : Screen("ai_risk_report")
+}
+
+fun generateAlerts(risks: List<AppRisk>): List<String> {
+
+    val alerts = mutableListOf<String>()
+
+    risks.forEach {
+
+        if (it.riskScore > 80) {
+            alerts.add("${it.name} is potentially malicious")
+        }
+
+        if (it.riskScore > 50) {
+            alerts.add("${it.name} is suspicious")
+        }
+    }
+
+    return alerts
+}
+
+fun getMostUsedApps(context: Context): List<String> {
+
+    val usageStatsManager =
+        context.getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+
+    val end = System.currentTimeMillis()
+    val start = end - (1000 * 60 * 60 * 24)
+
+    val stats = usageStatsManager.queryUsageStats(
+        android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+        start,
+        end
+    )
+
+    return stats.sortedByDescending { it.totalTimeInForeground }
+        .take(5)
+        .map { it.packageName }
 }
 
 @Composable
@@ -171,6 +209,10 @@ fun TestudoApp() {
             
             composable(Screen.AIRiskReport.route){
                 AiRiskReportScreen(navController)
+            }
+
+            composable(Screen.Status.route) {
+                StatusScreen()
             }
 
         }
@@ -431,7 +473,12 @@ fun SurroundingButtons(navController: NavHostController) {
             )
 
 
-            FeatureButton("Status")
+            FeatureButton(
+                "Status",
+                onClick = {
+                    navController.navigate(Screen.Status.route)
+                }
+            )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(80.dp)) {
@@ -471,16 +518,24 @@ fun FeatureButton(
 fun ScanButton(
     modifier: Modifier = Modifier
 ) {
+
+    val context = LocalContext.current
+
     Box(
         modifier = modifier
             .size(180.dp)
             .clip(CircleShape)
             .background(Color(0xFFB8860B))
-            .clickable { },
+            .clickable {
+
+                val results = scanInstalledApps(context)
+
+                Log.d("SCAN", "Scanned ${results.size} apps")
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "SCAN",
+            "SCAN",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF5A3E2B)
@@ -618,6 +673,26 @@ fun formatBytes(bytes: Long): String {
         mb >= 1 -> String.format("%.2f MB", mb)
         kb >= 1 -> String.format("%.2f KB", kb)
         else -> "$bytes B"
+    }
+}
+
+fun scanInstalledApps(context: Context): List<AppRisk> {
+
+    val pm = context.packageManager
+    val apps = pm.getInstalledApplications(0)
+
+    return apps.map {
+
+        val risk = when {
+            it.packageName.contains("test") -> 70
+            it.packageName.contains("hack") -> 90
+            else -> (5..40).random()
+        }
+
+        AppRisk(
+            name = pm.getApplicationLabel(it).toString(),
+            riskScore = risk
+        )
     }
 }
 
@@ -1304,6 +1379,88 @@ fun AiRiskReportScreen(navController: NavHostController) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StatusScreen() {
+
+    val context = LocalContext.current
+    var apps by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        apps = getMostUsedApps(context)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE))
+            .padding(16.dp)
+    ) {
+
+        Spacer(Modifier.height(16.dp))
+
+        TitleSection()
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "Device Status",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B)
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = "Most Used Apps (Last 24h)",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B)
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        LazyColumn {
+
+            items(apps) { packageName ->
+
+                StatusAppItem(packageName)
+
+            }
+
+        }
+    }
+}
+
+@Composable
+fun StatusAppItem(packageName: String) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFE8E1C8))
+            .padding(16.dp)
+    ) {
+
+        Column {
+
+            Text(
+                text = packageName,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF8B1A1A)
+            )
+
+            Text(
+                text = "High activity detected",
+                fontSize = 12.sp,
+                color = Color(0xFF5A3E2B)
+            )
         }
     }
 }
