@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -1336,11 +1337,32 @@ fun SettingsToggleItem(
 @Composable
 fun AiRiskReportScreen(navController: NavHostController) {
 
-    val appRisks = listOf(
-        Triple("WhatsApp", "Safe", 18),
-        Triple("Suspicious", "Suspicious", 51),
-        Triple("Torjan.Dropper", "Malicious", 92)
+    val appRisks = remember {
+        listOf(
+            Triple("WhatsApp", "Safe", 18),
+            Triple("Suspicious", "Suspicious", 51),
+            Triple("Torjan.Dropper", "Malicious", 92)
+        )
+    }
+
+    var selectedFilter by remember { mutableStateOf("All") }
+    val filters = listOf("All", "Safe", "Suspicious", "Malicious")
+    var expandedItem by remember { mutableStateOf<String?>(null) }
+
+    // Animated risk score
+    var scoreVisible by remember { mutableStateOf(false) }
+    val animatedScore by animateIntAsState(
+        targetValue = if (scoreVisible) 18 else 0,
+        animationSpec = tween(durationMillis = 1000),
+        label = "score"
     )
+
+    LaunchedEffect(Unit) {
+        scoreVisible = true
+    }
+
+    val filteredRisks = if (selectedFilter == "All") appRisks
+    else appRisks.filter { it.second == selectedFilter }
 
     Column(
         modifier = Modifier
@@ -1383,6 +1405,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(12.dp))
 
+        // Risk summary card with animated score
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1400,7 +1423,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "18",
+                        text = animatedScore.toString(),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF5A3E2B)
@@ -1428,41 +1451,152 @@ fun AiRiskReportScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(16.dp))
 
+        // Filter buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            filters.forEach { filter ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (selectedFilter == filter) Color(0xFF8B1A1A)
+                            else Color(0xFFE8E1C8)
+                        )
+                        .clickable { selectedFilter = filter }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = filter,
+                        color = if (selectedFilter == filter) Color.White else Color(0xFF5A3E2B),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // App risk list
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            appRisks.forEach { (name, status, score) ->
-                Row(
+            if (filteredRisks.isEmpty()) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFFE8E1C8))
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column {
-                        Text(
-                            text = name,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Color(0xFF8B1A1A)
-                        )
-                        Text(
-                            text = status,
-                            fontSize = 13.sp,
-                            color = Color(0xFF8B1A1A)
-                        )
-                    }
                     Text(
-                        text = score.toString(),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color(0xFF5A3E2B)
+                        "No $selectedFilter apps found",
+                        color = Color(0xFF5A3E2B),
+                        fontWeight = FontWeight.Bold
                     )
+                }
+            } else {
+                filteredRisks.forEach { (name, status, score) ->
+
+                    val rowColor = when (status) {
+                        "Safe" -> Color(0xFF2E7D32)
+                        "Suspicious" -> Color(0xFFF9A825)
+                        "Malicious" -> Color(0xFFB22222)
+                        else -> Color(0xFF8B1A1A)
+                    }
+
+                    val isExpanded = expandedItem == name
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFE8E1C8))
+                            .clickable {
+                                expandedItem = if (isExpanded) null else name
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(rowColor)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF8B1A1A)
+                                    )
+                                    Text(
+                                        text = status,
+                                        fontSize = 13.sp,
+                                        color = rowColor
+                                    )
+                                }
+                            }
+                            Text(
+                                text = score.toString(),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = Color(0xFF5A3E2B)
+                            )
+                        }
+
+                        // Expanded detail
+                        AnimatedVisibility(
+                            visible = isExpanded,
+                            enter = expandVertically(),
+                            exit = shrinkVertically()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(rowColor.copy(alpha = 0.15f))
+                                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Risk Score: $score / 100",
+                                        fontWeight = FontWeight.Bold,
+                                        color = rowColor,
+                                        fontSize = 13.sp
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = when (status) {
+                                            "Safe" -> "This app has no known threats. It behaves normally and requests only standard permissions."
+                                            "Suspicious" -> "This app shows unusual behaviour. It may request excessive permissions or communicate with unknown servers."
+                                            "Malicious" -> "This app has been identified as malicious. It is strongly recommended to uninstall it immediately."
+                                            else -> "No additional information available."
+                                        },
+                                        color = Color(0xFF5A3E2B),
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
