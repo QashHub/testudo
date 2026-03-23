@@ -5,6 +5,9 @@ import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import android.app.AppOpsManager
 import android.content.Context
 import android.os.Process
@@ -39,6 +42,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Warning
 import androidx.navigation.NavController
 import com.example.testudo.ui.theme.TestudoTheme
 import androidx.compose.animation.animateColorAsState
@@ -761,9 +767,22 @@ fun UsageCircle(percent: String) {
 @Composable
 fun AlertsScreen() {
 
+    data class AlertData(val leftText: String, val rightText: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+
+    var alerts by remember {
+        mutableStateOf(
+            listOf(
+                AlertData("Poor network connection — AI processing may take longer than usual.", "Check your internet connection.", Icons.Default.WifiOff),
+                AlertData("Free up space to save AI results and continue using the app.","Storage space full", Icons.Default.Storage)
+                )
+            )
+
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+
             .background(Color(0xFFD8CFAE))
     ) {
         Spacer(Modifier.height(24.dp))
@@ -832,32 +851,75 @@ fun AlertsScreen() {
         Spacer(Modifier.height(24.dp))
 
         // Previous alerts section title
-        Text(
-            "Previous Alerts",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B),
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Previous Alerts",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF5A3E2B)
+            )
+            if (alerts.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF8B1A1A))
+                        .clickable { alerts = emptyList() }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "Clear All",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
 
         Spacer(Modifier.height(12.dp))
 
         // Alert items
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            AlertItem(
-                leftText = "Poor network connection — AI processing may take longer than usual.",
-                rightText = "Check your internet connection."
-            )
-
-            AlertItem(
-                leftText = "Free up space to save AI results and continue using the app.",
-                rightText = "Storage space full"
-            )
+        if (alerts.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE8E1C8))
+                    .padding(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No previous alerts",
+                    color = Color(0xFF5A3E2B),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                alerts.forEach { alert ->
+                    AlertItem(
+                        leftText = alert.leftText,
+                        rightText = alert.rightText,
+                        icon = alert.icon,
+                        onDismiss = {
+                            alerts = alerts.filter { it.leftText != alert.leftText }
+                        }
+                    )
+                }
+            }
         }
     }
 
@@ -916,71 +978,80 @@ fun NoAlertsSection() {
 }
 
 
-@Composable
-fun PreviousAlertsSection() {
-
-    Text(
-        "Previous Alerts",
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color(0xFF5A3E2B),
-        modifier = Modifier.padding(12.dp)
-    )
-
-    AlertItem(
-        leftText = "Poor network connection\nAI processing may take longer than usual.",
-        rightText = "Check your internet connection."
-    )
-
-    AlertItem(
-        leftText = "Free up space to save AI results and continue using the app.",
-        rightText = "Storage space full"
-    )
-}
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertItem(
     leftText: String,
-    rightText: String
+    rightText: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onDismiss: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .height(IntrinsicSize.Min)
-    ) {
-        // Left side
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .background(Color(0xFFE6D9A8))
-                .padding(14.dp)
-        ) {
-            Text(
-                leftText,
-                color = Color(0xFF5A3E2B),
-                fontSize = 13.sp
-            )
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.EndToStart || it == SwipeToDismissBoxValue.StartToEnd) {
+                onDismiss()
+                true
+            } else false
         }
+    )
 
-        // Right side
-        Box(
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFB22222))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        }
+    ) {
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .background(Color(0xFF8B1A1A))
-                .padding(14.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .height(IntrinsicSize.Min)
         ) {
-            Text(
-                rightText,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(Color(0xFFE6D9A8))
+                    .padding(14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = Color(0xFF8B1A1A),
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(top = 2.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(leftText, color = Color(0xFF5A3E2B), fontSize = 13.sp)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(Color(0xFF8B1A1A))
+                    .padding(14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    rightText,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
         }
     }
 }
