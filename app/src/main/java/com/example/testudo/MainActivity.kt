@@ -11,6 +11,8 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import android.app.AppOpsManager
 import android.content.Context
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
 import androidx.compose.animation.core.animateFloat
 import android.os.Process
 import androidx.compose.animation.core.infiniteRepeatable
@@ -149,8 +151,10 @@ fun TestudoApp() {
         }
     }
 
+    val alertCount = 2
+
     Scaffold(
-        bottomBar = { BottomNavBar(navController) }
+        bottomBar = { BottomNavBar(navController, alertCount) }
     ) { innerPadding ->
 
         NavHost(
@@ -208,7 +212,7 @@ fun MainScreen(navController: NavHostController) {
 
             Box(contentAlignment = Alignment.Center) {
 
-                SurroundingButtons(navController)
+                SurroundingButtons(navController, alertCount = 2)
 
                 ScanButton(
                     modifier = Modifier
@@ -421,25 +425,37 @@ fun TitleSection() {
 }
 
 @Composable
-fun SurroundingButtons(navController: NavHostController) {
+fun SurroundingButtons(navController: NavHostController, alertCount: Int = 2) {
     Column(
         verticalArrangement = Arrangement.spacedBy(80.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(80.dp)) {
 
-            FeatureButton(
-                "Alerts",
-                onClick = {
-
-                    Log.d("NAV_DEBUG", "Alerts button pressed")
-                    Log.d("NAV_DEBUG", "Navigating to route: ${Screen.Alerts.route}")
-
-                    navController.navigate(Screen.Alerts.route) {
-                        launchSingleTop = true
+            BadgedBox(
+                badge = {
+                    if (alertCount > 0) {
+                        Badge(containerColor = Color(0xFFB22222)) {
+                            Text(
+                                text = alertCount.toString(),
+                                color = Color.White,
+                                fontSize = 10.sp
+                            )
+                        }
                     }
                 }
-            )
+            ) {
+                FeatureButton(
+                    "Alerts",
+                    onClick = {
+                        Log.d("NAV_DEBUG", "Alerts button pressed")
+                        Log.d("NAV_DEBUG", "Navigating to route: ${Screen.Alerts.route}")
+                        navController.navigate(Screen.Alerts.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
 
 
             FeatureButton("Status")
@@ -513,7 +529,7 @@ fun ScanButton(
 }
 
 @Composable
-fun BottomNavBar(navController: NavHostController) {
+fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
 
     val currentRoute =
         navController.currentBackStackEntryAsState().value?.destination?.route
