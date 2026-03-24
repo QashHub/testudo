@@ -5,6 +5,9 @@ import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -68,6 +71,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
 
 
+
 //AA
 //Initial UI Development Made by Andres any questions please ask.
 
@@ -102,6 +106,7 @@ fun requestUsageStatsPermission(context: Context) {
 }
 
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
     object Home : Screen("home")
     object Alerts : Screen("alerts")
     object User : Screen("user")
@@ -112,19 +117,22 @@ sealed class Screen(val route: String) {
 
 @Composable
 fun PermissionGate() {
-
     val context = LocalContext.current
     var hasPermission by remember { mutableStateOf(false) }
+    var showSplash by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
+        delay(2500)
+        showSplash = false
         hasPermission = hasUsageStatsPermission(context)
-
         if (!hasPermission) {
             requestUsageStatsPermission(context)
         }
     }
 
-    if (hasPermission) {
+    if (showSplash) {
+        SplashScreenStandalone()
+    } else if (hasPermission) {
         TestudoApp()
     } else {
         Box(
@@ -155,15 +163,27 @@ fun TestudoApp() {
 
     val alertCount = 2
 
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
     Scaffold(
-        bottomBar = { BottomNavBar(navController, alertCount) }
+        bottomBar = {
+            if (currentRoute != Screen.Splash.route) {
+                BottomNavBar(navController, alertCount)
+            }
+        }
     ) { innerPadding ->
 
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(
+                if (currentRoute == Screen.Splash.route) PaddingValues(0.dp)
+                else innerPadding
+            )
         ) {
+            composable(Screen.Splash.route){
+                SplashScreenStandalone()
+            }
 
             composable(Screen.Home.route) {
                 MainScreen(navController)
@@ -1664,7 +1684,85 @@ fun AiRiskReportScreen(navController: NavHostController) {
         }
     }
 }
-//
+
+@Composable
+fun SplashScreenStandalone() {
+    var visible by remember { mutableStateOf(false) }
+
+    val splashAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "fadeIn"
+    )
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.graphicsLayer { alpha = splashAlpha }
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 60.dp,
+                            topEnd = 60.dp,
+                            bottomStart = 40.dp,
+                            bottomEnd = 40.dp
+                        )
+                    )
+                    .background(Color(0xFF8B1A1A)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "T",
+                    fontSize = 60.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB8860B)
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text = "Testudo",
+                fontSize = 40.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFB22222)
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Your Device Security Guard",
+                fontSize = 14.sp,
+                color = Color(0xFF5A3E2B),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+//PREVIEWS!!!
+@Preview(showBackground = true)
+@Composable
+fun SplashScreenPreview(){
+    TestudoTheme {
+        TestudoTheme {
+            val navController = rememberNavController()
+            SplashScreenStandalone()
+        }
+    }
+}
 @Preview(showBackground = true)
 @Composable
 fun AlertsPreview() {
