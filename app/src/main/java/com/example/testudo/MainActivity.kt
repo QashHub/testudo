@@ -66,6 +66,8 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
+import androidx.compose.ui.Alignment
+
 //AA
 //Initial UI Development Made by Andres any questions please ask.
 
@@ -225,8 +227,8 @@ fun MainScreen(navController: NavHostController) {
                 SurroundingButtons(navController, alertCount = 2)
 
                 ScanButton(
-                    modifier = Modifier
-                        .align(Alignment.Center)
+                    modifier = Modifier.align(Alignment.Center),
+                    isSafe = true
                 )
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -506,7 +508,8 @@ fun FeatureButton(
 
 @Composable
 fun ScanButton(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSafe: Boolean = true
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
 
@@ -520,24 +523,40 @@ fun ScanButton(
         label = "pulseScale"
     )
 
+    val ringColor = if (isSafe) Color(0xFF2E7D32) else Color(0xFFB22222)
+
     Box(
         modifier = modifier
-            .size(180.dp)
-            .scale(pulse)
-            .clip(CircleShape)
-            .background(Color(0xFFB8860B))
-            .clickable { },
+            .size(200.dp)
+            .scale(pulse),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "SCAN",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+        // Status ring
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(ringColor)
         )
+
+        // Inner scan button
+        Box(
+            modifier = Modifier
+                .size(180.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFB8860B))
+                .clickable { },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "SCAN",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF5A3E2B)
+            )
+        }
     }
 }
-
 @Composable
 fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
 
