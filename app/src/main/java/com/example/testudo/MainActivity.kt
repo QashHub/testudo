@@ -1487,7 +1487,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(12.dp))
 
-        // Risk summary card with animated score
+        // Risk summary
         Box(
             modifier = Modifier
                 .fillMaxWidth()
