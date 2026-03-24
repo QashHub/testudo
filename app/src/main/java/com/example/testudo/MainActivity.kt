@@ -66,7 +66,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
-import androidx.compose.ui.Alignment
+
 
 //AA
 //Initial UI Development Made by Andres any questions please ask.
@@ -439,10 +439,10 @@ fun TitleSection() {
 @Composable
 fun SurroundingButtons(navController: NavHostController, alertCount: Int = 2) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(80.dp),
+        verticalArrangement = Arrangement.spacedBy(100.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(80.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(100.dp)) {
 
             BadgedBox(
                 badge = {
@@ -473,7 +473,7 @@ fun SurroundingButtons(navController: NavHostController, alertCount: Int = 2) {
             FeatureButton("Status")
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(80.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(100.dp)) {
             FeatureButton("AI Assist")
             FeatureButton(
                 "Clean Cache",
@@ -527,7 +527,7 @@ fun ScanButton(
 
     Box(
         modifier = modifier
-            .size(200.dp)
+            .size(190.dp)
             .scale(pulse),
         contentAlignment = Alignment.Center
     ) {
