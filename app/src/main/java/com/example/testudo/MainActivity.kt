@@ -210,6 +210,16 @@ fun MainScreen(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
+            Text(
+                text = "Hello John!",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF5A3E2B)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+
             Box(contentAlignment = Alignment.Center) {
 
                 SurroundingButtons(navController, alertCount = 2)
