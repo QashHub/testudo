@@ -260,6 +260,11 @@ fun TestudoApp() {
 //a
 @Composable
 fun MainScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    var isSafe by remember { mutableStateOf(true) }
+    var isScanning by remember { mutableStateOf(false) }
+    var mlResults by remember { mutableStateOf<List<Triple<String, String, Int>>>(emptyList()) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -269,34 +274,70 @@ fun MainScreen(navController: NavHostController) {
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Spacer(modifier = Modifier.height(24.dp))
-
             TitleSection()
-
             Spacer(modifier = Modifier.height(40.dp))
-
             Text(
                 text = "Hello John!",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF5A3E2B)
             )
-
             Spacer(modifier = Modifier.height(32.dp))
 
-
-            Box(contentAlignment = Alignment.Center) {
-
-                SurroundingButtons(navController, alertCount = 2)
-
-                ScanButton(
-                    modifier = Modifier.align(Alignment.Center),
-                    isSafe = true
-                )
+            if (isScanning) {
+                CircularProgressIndicator(color = Color(0xFF8B1A1A))
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Scanning...", color = Color(0xFF5A3E2B))
+            } else {
+                Box(contentAlignment = Alignment.Center) {
+                    SurroundingButtons(navController, alertCount = 2)
+                    ScanButton(
+                        modifier = Modifier.align(Alignment.Center),
+                        isSafe = isSafe,
+                        onClick = {
+                            isScanning = true
+                        }
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(24.dp))
 
+            LaunchedEffect(isScanning) {
+                if (isScanning) {
+                    val results = withContext(Dispatchers.IO) {
+                        val ml = MLEngine(context)
+                        val pm = context.packageManager
+                        val apps = pm.getInstalledApplications(0).take(10)
+                        apps.map { appInfo ->
+                            val features = floatArrayOf(
+                                (5..60).random().toFloat(),
+                                (100..600).random().toFloat(),
+                                (10..900).random().toFloat(),
+                                (10..500).random().toFloat(),
+                                (1..100).random().toFloat(),
+                                (5..200).random().toFloat(),
+                                (100..2000).random().toFloat(),
+                                (1..10).random().toFloat(),
+                                (0..25).random().toFloat(),
+                                (0..35).random().toFloat(),
+                                (0..10).random().toFloat(),
+                                (0..120).random().toFloat(),
+                                (1..60).random().toFloat(),
+                                (0..20).random().toFloat(),
+                                (0..30).random().toFloat()
+                            )
+                            val result = ml.predict(features)
+                            val name = pm.getApplicationLabel(appInfo).toString()
+                            Triple(name, result.label, result.riskScore.toInt())
+                        }.also { ml.close() }
+                    }
+                    mlResults = results
+                    isSafe = results.none { it.second == "Malicious" }
+                    isScanning = false
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -315,10 +356,8 @@ fun MainScreen(navController: NavHostController) {
                 )
             }
         }
-
     }
 }
-
 @Composable
 fun UserScreen() {
 
@@ -578,7 +617,8 @@ fun FeatureButton(
 @Composable
 fun ScanButton(
     modifier: Modifier = Modifier,
-    isSafe: Boolean = true
+    isSafe: Boolean = true,
+    onClick: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
 
@@ -614,7 +654,7 @@ fun ScanButton(
                 .size(180.dp)
                 .clip(CircleShape)
                 .background(Color(0xFFB8860B))
-                .clickable { },
+                .clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -1489,11 +1529,13 @@ fun SettingsToggleItem(
 fun AiRiskReportScreen(navController: NavHostController) {
 
     val appRisks = remember {
-        listOf(
-            Triple("WhatsApp", "Safe", 18),
-            Triple("Suspicious", "Suspicious", 51),
-            Triple("Torjan.Dropper", "Malicious", 92)
-        )
+        scanInstalledApps(navController.context).map {
+            Triple(it.name, when {
+                it.riskScore > 60 -> "Malicious"
+                it.riskScore > 30 -> "Suspicious"
+                else -> "Safe"
+            }, it.riskScore)
+        }
     }
 
     var selectedFilter by remember { mutableStateOf("All") }
