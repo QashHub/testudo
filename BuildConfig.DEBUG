@@ -1,0 +1,14 @@
+//logger helper
+object Logger {
+    private const val TAG = "TestudoApp"
+
+    fun d(message: String) {
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, message)
+        }
+    }
+
+    fun e(message: String, throwable: Throwable? = null) {
+        Log.e(TAG, message, throwable)
+    }
+}
