@@ -69,9 +69,9 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
-
-
-
+import com.example.testudo.data.local.db.DatabaseProvider
+import com.example.testudo.data.local.db.entity.UserProfileEntity
+import kotlinx.coroutines.launch
 //AA
 //Initial UI Development Made by Andres any questions please ask.
 
@@ -322,20 +322,39 @@ fun MainScreen(navController: NavHostController) {
 @Composable
 fun UserScreen() {
 
-    var user by remember {
-        mutableStateOf(
-            User(
-                name = "John Doe",
-                email = "john@example.com",
-                phone = "+44 7123456789",
-                paymentDetails = "Visa •••• 1234",
-                isPremium = false
-            )
+    val context = LocalContext.current
+    val db = remember { DatabaseProvider.getDatabase(context) }
+    val dao = remember { db.userProfileDao() }
+    val coroutineScope = rememberCoroutineScope()
+
+    var user by remember { mutableStateOf<UserProfileEntity?>(null) }
+    var editMode by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val existingUser = dao.getUserProfile()
+
+        user = existingUser ?: UserProfileEntity(
+            id = 1,
+            name = "John Doe",
+            email = "john@example.com",
+            phone = "+44 7123456789",
+            paymentDetails = "Visa •••• 1234",
+            isPremium = false
         )
     }
 
-    var editMode by remember { mutableStateOf(false) }
-
+    if (user == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFD8CFAE)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    val currentUser = user ?: return
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -363,26 +382,26 @@ fun UserScreen() {
 
         Spacer(Modifier.height(20.dp))
 
-        EditableField("Name", user.name, editMode) {
-            user = user.copy(name = it)
+        EditableField("Name", currentUser.name, editMode) {
+            user = currentUser.copy(name = it)
         }
 
-        EditableField("Email", user.email, editMode) {
-            user = user.copy(email = it)
+        EditableField("Email", currentUser.email, editMode) {
+            user = currentUser.copy(email = it)
         }
 
-        EditableField("Phone", user.phone, editMode) {
-            user = user.copy(phone = it)
+        EditableField("Phone", currentUser.phone, editMode) {
+            user = currentUser.copy(phone = it)
         }
 
-        EditableField("Payment Details", user.paymentDetails, editMode) {
-            user = user.copy(paymentDetails = it)
+        EditableField("Payment Details", currentUser.paymentDetails, editMode) {
+            user = currentUser.copy(paymentDetails = it)
         }
 
         Spacer(Modifier.height(16.dp))
 
-        PremiumToggle(user.isPremium) {
-            user = user.copy(isPremium = it)
+        PremiumToggle(currentUser.isPremium) {
+            user = currentUser.copy(isPremium = it)
         }
 
         Spacer(Modifier.height(24.dp))
@@ -398,7 +417,14 @@ fun UserScreen() {
 
             if (editMode) {
                 Button(
-                    onClick = { editMode = false },
+                    onClick = {
+                        user?.let { updatedUser ->
+                            coroutineScope.launch {
+                                dao.insertOrUpdateUserProfile(updatedUser)
+                            }
+                        }
+                        editMode = false
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB8860B))
                 ) {
                     Text("Save", color = Color.White)

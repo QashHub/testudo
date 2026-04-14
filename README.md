@@ -35,7 +35,8 @@ Before you move on, go ahead and explore the repository. You've already seen the
 
 ## Clone a repository
 
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
+Use these steps to clone java -version
+.\gradlew.bat -version from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
 
 1. You’ll see the clone button under the **Source** heading. Click that button.
 2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
