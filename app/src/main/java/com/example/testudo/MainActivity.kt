@@ -69,7 +69,8 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
-
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
+import com.valentinilk.shimmer . shimmer
 
 
 //AA
@@ -716,13 +717,27 @@ fun CacheScreen() {
         Spacer(Modifier.height(16.dp))
 
         if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                CircularProgressIndicator()
+                repeat(6) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .shimmer()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF1C2B3A))
+
+                    )
+                }
             }
-        } else {
+
+        }
+        else {
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
