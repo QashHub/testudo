@@ -5,9 +5,22 @@ import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import android.app.AppOpsManager
 import android.content.Context
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.animation.core.animateFloat
 import android.os.Process
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
 import android.provider.Settings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,6 +52,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Warning
 import androidx.navigation.NavController
 import com.example.testudo.ui.theme.TestudoTheme
 import androidx.compose.animation.animateColorAsState
@@ -53,7 +69,6 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
-import androidx.room.Room
 import com.example.testudo.data.local.db.DatabaseProvider
 import com.example.testudo.data.local.db.entity.UserProfileEntity
 import kotlinx.coroutines.launch
@@ -91,12 +106,51 @@ fun requestUsageStatsPermission(context: Context) {
 }
 
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
     object Home : Screen("home")
     object Alerts : Screen("alerts")
+    object Status : Screen("status")
     object User : Screen("user")
     object Cache : Screen("cache")
     object Settings : Screen("settings")
     object AIRiskReport : Screen("ai_risk_report")
+}
+
+fun generateAlerts(risks: List<AppRisk>): List<String> {
+
+    val alerts = mutableListOf<String>()
+
+    risks.forEach {
+
+        if (it.riskScore > 80) {
+            alerts.add("${it.name} is potentially malicious")
+        }
+
+        if (it.riskScore > 50) {
+            alerts.add("${it.name} is suspicious")
+        }
+    }
+
+    return alerts
+}
+
+fun getMostUsedApps(context: Context): List<String> {
+
+    val usageStatsManager =
+        context.getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+
+    val end = System.currentTimeMillis()
+    val start = end - (1000 * 60 * 60 * 24)
+
+    val stats = usageStatsManager.queryUsageStats(
+        android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+        start,
+        end
+    )
+
+    return stats.sortedByDescending { it.totalTimeInForeground }
+        .take(5)
+        .map { it.packageName }
 }
 
 @Composable
@@ -104,8 +158,11 @@ fun PermissionGate() {
 
     val context = LocalContext.current
     var hasPermission by remember { mutableStateOf(false) }
+    var showSplash by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
+        delay(2500)
+        showSplash = false
         hasPermission = hasUsageStatsPermission(context)
 
         if (!hasPermission) {
@@ -113,7 +170,9 @@ fun PermissionGate() {
         }
     }
 
-    if (hasPermission) {
+    if (showSplash) {
+        SplashScreenStandalone()
+    } else if (hasPermission) {
         TestudoApp()
     } else {
         Box(
@@ -142,15 +201,29 @@ fun TestudoApp() {
         }
     }
 
+    val alertCount = 2
+
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
     Scaffold(
-        bottomBar = { BottomNavBar(navController) }
+        bottomBar = {
+            if (currentRoute != Screen.Splash.route) {
+                BottomNavBar(navController, alertCount)
+            }
+        }
     ) { innerPadding ->
 
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(
+                if (currentRoute == Screen.Splash.route) PaddingValues(0.dp)
+                else innerPadding
+            )
         ) {
+            composable(Screen.Splash.route){
+                SplashScreenStandalone()
+            }
 
             composable(Screen.Home.route) {
                 MainScreen(navController)
@@ -177,6 +250,10 @@ fun TestudoApp() {
                 AiRiskReportScreen(navController)
             }
 
+            composable(Screen.Status.route) {
+                StatusScreen()
+            }
+
         }
     }
 }
@@ -199,13 +276,23 @@ fun MainScreen(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
+            Text(
+                text = "Hello John!",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF5A3E2B)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+
             Box(contentAlignment = Alignment.Center) {
 
-                SurroundingButtons(navController)
+                SurroundingButtons(navController, alertCount = 2)
 
                 ScanButton(
-                    modifier = Modifier
-                        .align(Alignment.Center)
+                    modifier = Modifier.align(Alignment.Center),
+                    isSafe = true
                 )
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -440,31 +527,48 @@ fun TitleSection() {
 }
 
 @Composable
-fun SurroundingButtons(navController: NavHostController) {
+fun SurroundingButtons(navController: NavHostController, alertCount: Int = 2) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(80.dp),
+        verticalArrangement = Arrangement.spacedBy(100.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(80.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(100.dp)) {
 
-            FeatureButton(
-                "Alerts",
-                onClick = {
-
-                    Log.d("NAV_DEBUG", "Alerts button pressed")
-                    Log.d("NAV_DEBUG", "Navigating to route: ${Screen.Alerts.route}")
-
-                    navController.navigate(Screen.Alerts.route) {
-                        launchSingleTop = true
+            BadgedBox(
+                badge = {
+                    if (alertCount > 0) {
+                        Badge(containerColor = Color(0xFFB22222)) {
+                            Text(
+                                text = alertCount.toString(),
+                                color = Color.White,
+                                fontSize = 10.sp
+                            )
+                        }
                     }
                 }
+            ) {
+                FeatureButton(
+                    "Alerts",
+                    onClick = {
+                        Log.d("NAV_DEBUG", "Alerts button pressed")
+                        Log.d("NAV_DEBUG", "Navigating to route: ${Screen.Alerts.route}")
+                        navController.navigate(Screen.Alerts.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+
+            FeatureButton(
+                "Status",
+                onClick = {
+                    navController.navigate(Screen.Status.route)
+                }
             )
-
-
-            FeatureButton("Status")
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(80.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(100.dp)) {
             FeatureButton("AI Assist")
             FeatureButton(
                 "Clean Cache",
@@ -499,27 +603,57 @@ fun FeatureButton(
 
 @Composable
 fun ScanButton(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSafe: Boolean = true
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    val ringColor = if (isSafe) Color(0xFF2E7D32) else Color(0xFFB22222)
+
     Box(
         modifier = modifier
-            .size(180.dp)
-            .clip(CircleShape)
-            .background(Color(0xFFB8860B))
-            .clickable { },
+            .size(190.dp)
+            .scale(pulse),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "SCAN",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+        // Status ring
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(ringColor)
         )
+
+        // Inner scan button
+        Box(
+            modifier = Modifier
+                .size(180.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFB8860B))
+                .clickable { },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "SCAN",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF5A3E2B)
+            )
+        }
     }
 }
-
 @Composable
-fun BottomNavBar(navController: NavHostController) {
+fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
 
     val currentRoute =
         navController.currentBackStackEntryAsState().value?.destination?.route
@@ -648,6 +782,26 @@ fun formatBytes(bytes: Long): String {
         mb >= 1 -> String.format("%.2f MB", mb)
         kb >= 1 -> String.format("%.2f KB", kb)
         else -> "$bytes B"
+    }
+}
+
+fun scanInstalledApps(context: Context): List<AppRisk> {
+
+    val pm = context.packageManager
+    val apps = pm.getInstalledApplications(0)
+
+    return apps.map {
+
+        val risk = when {
+            it.packageName.contains("test") -> 70
+            it.packageName.contains("hack") -> 90
+            else -> (5..40).random()
+        }
+
+        AppRisk(
+            name = pm.getApplicationLabel(it).toString(),
+            riskScore = risk
+        )
     }
 }
 
@@ -791,23 +945,162 @@ fun UsageCircle(percent: String) {
 @Composable
 fun AlertsScreen() {
 
+    data class AlertData(val leftText: String, val rightText: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+
+    var alerts by remember {
+        mutableStateOf(
+            listOf(
+                AlertData("Poor network connection — AI processing may take longer than usual.", "Check your internet connection.", Icons.Default.WifiOff),
+                AlertData("Free up space to save AI results and continue using the app.","Storage space full", Icons.Default.Storage)
+                )
+            )
+
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE)),
-        horizontalAlignment = Alignment.CenterHorizontally
+
+            .background(Color(0xFFD8CFAE))
     ) {
+        Spacer(Modifier.height(24.dp))
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            TitleSection()
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Header bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF8B1A1A))
+                .padding(14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "Alerts",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // No alerts card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFFE8E1C8))
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "No alerts available",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF5A3E2B),
+                    fontSize = 18.sp
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "You'll see important notifications here when they arrive.",
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFF5A3E2B),
+                    fontSize = 14.sp
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "✓  You're all caught up!",
+                    color = Color(0xFF8B1A1A),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        TitleSection()
+        // Previous alerts section title
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Previous Alerts",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF5A3E2B)
+            )
+            if (alerts.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF8B1A1A))
+                        .clickable { alerts = emptyList() }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "Clear All",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
 
-        AlertsHeader()
+        Spacer(Modifier.height(12.dp))
 
-        NoAlertsSection()
-
-        PreviousAlertsSection()
+        // Alert items
+        if (alerts.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE8E1C8))
+                    .padding(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No previous alerts",
+                    color = Color(0xFF5A3E2B),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                alerts.forEach { alert ->
+                    AlertItem(
+                        leftText = alert.leftText,
+                        rightText = alert.rightText,
+                        icon = alert.icon,
+                        onDismiss = {
+                            alerts = alerts.filter { it.leftText != alert.leftText }
+                        }
+                    )
+                }
+            }
+        }
     }
+
 }
 
 @Composable
@@ -863,64 +1156,80 @@ fun NoAlertsSection() {
 }
 
 
-@Composable
-fun PreviousAlertsSection() {
-
-    Text(
-        "Previous Alerts",
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color(0xFF5A3E2B),
-        modifier = Modifier.padding(12.dp)
-    )
-
-    AlertItem(
-        leftText = "Poor network connection\nAI processing may take longer than usual.",
-        rightText = "Check your internet connection."
-    )
-
-    AlertItem(
-        leftText = "Free up space to save AI results and continue using the app.",
-        rightText = "Storage space full"
-    )
-}
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertItem(
     leftText: String,
-    rightText: String
+    rightText: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onDismiss: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-    ) {
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .background(Color(0xFFE6D9A8), RoundedCornerShape(topEnd = 40.dp))
-                .padding(12.dp)
-        ) {
-            Text(
-                leftText,
-                color = Color.Black
-            )
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.EndToStart || it == SwipeToDismissBoxValue.StartToEnd) {
+                onDismiss()
+                true
+            } else false
         }
+    )
 
-        Box(
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFB22222))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        }
+    ) {
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .background(Color(0xFF8B1A1A))
-                .padding(12.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .height(IntrinsicSize.Min)
         ) {
-            Text(
-                rightText,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(Color(0xFFE6D9A8))
+                    .padding(14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = Color(0xFF8B1A1A),
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(top = 2.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(leftText, color = Color(0xFF5A3E2B), fontSize = 13.sp)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(Color(0xFF8B1A1A))
+                    .padding(14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    rightText,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
         }
     }
 }
@@ -1205,11 +1514,32 @@ fun SettingsToggleItem(
 @Composable
 fun AiRiskReportScreen(navController: NavHostController) {
 
-    val appRisks = listOf(
-        Triple("WhatsApp", "Safe", 18),
-        Triple("Suspicious", "Suspicious", 51),
-        Triple("Torjan.Dropper", "Malicious", 92)
+    val appRisks = remember {
+        listOf(
+            Triple("WhatsApp", "Safe", 18),
+            Triple("Suspicious", "Suspicious", 51),
+            Triple("Torjan.Dropper", "Malicious", 92)
+        )
+    }
+
+    var selectedFilter by remember { mutableStateOf("All") }
+    val filters = listOf("All", "Safe", "Suspicious", "Malicious")
+    var expandedItem by remember { mutableStateOf<String?>(null) }
+
+    // Animated risk score
+    var scoreVisible by remember { mutableStateOf(false) }
+    val animatedScore by animateIntAsState(
+        targetValue = if (scoreVisible) 18 else 0,
+        animationSpec = tween(durationMillis = 1000),
+        label = "score"
     )
+
+    LaunchedEffect(Unit) {
+        scoreVisible = true
+    }
+
+    val filteredRisks = if (selectedFilter == "All") appRisks
+    else appRisks.filter { it.second == selectedFilter }
 
     Column(
         modifier = Modifier
@@ -1269,7 +1599,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "18",
+                        text = animatedScore.toString(),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF5A3E2B)
@@ -1297,47 +1627,318 @@ fun AiRiskReportScreen(navController: NavHostController) {
 
         Spacer(Modifier.height(16.dp))
 
+        // Filter buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            filters.forEach { filter ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (selectedFilter == filter) Color(0xFF8B1A1A)
+                            else Color(0xFFE8E1C8)
+                        )
+                        .clickable { selectedFilter = filter }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = filter,
+                        color = if (selectedFilter == filter) Color.White else Color(0xFF5A3E2B),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // App risk list
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            appRisks.forEach { (name, status, score) ->
-                Row(
+            if (filteredRisks.isEmpty()) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFFE8E1C8))
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column {
-                        Text(
-                            text = name,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Color(0xFF8B1A1A)
-                        )
-                        Text(
-                            text = status,
-                            fontSize = 13.sp,
-                            color = Color(0xFF8B1A1A)
-                        )
-                    }
                     Text(
-                        text = score.toString(),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color(0xFF5A3E2B)
+                        "No $selectedFilter apps found",
+                        color = Color(0xFF5A3E2B),
+                        fontWeight = FontWeight.Bold
                     )
+                }
+            } else {
+                filteredRisks.forEach { (name, status, score) ->
+
+                    val rowColor = when (status) {
+                        "Safe" -> Color(0xFF2E7D32)
+                        "Suspicious" -> Color(0xFFF9A825)
+                        "Malicious" -> Color(0xFFB22222)
+                        else -> Color(0xFF8B1A1A)
+                    }
+
+                    val isExpanded = expandedItem == name
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFE8E1C8))
+                            .clickable {
+                                expandedItem = if (isExpanded) null else name
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(rowColor)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF8B1A1A)
+                                    )
+                                    Text(
+                                        text = status,
+                                        fontSize = 13.sp,
+                                        color = rowColor
+                                    )
+                                }
+                            }
+                            Text(
+                                text = score.toString(),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = Color(0xFF5A3E2B)
+                            )
+                        }
+
+                        // Expanded detail
+                        AnimatedVisibility(
+                            visible = isExpanded,
+                            enter = expandVertically(),
+                            exit = shrinkVertically()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(rowColor.copy(alpha = 0.15f))
+                                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Risk Score: $score / 100",
+                                        fontWeight = FontWeight.Bold,
+                                        color = rowColor,
+                                        fontSize = 13.sp
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = when (status) {
+                                            "Safe" -> "This app has no known threats. It behaves normally and requests only standard permissions."
+                                            "Suspicious" -> "This app shows unusual behaviour. It may request excessive permissions or communicate with unknown servers."
+                                            "Malicious" -> "This app has been identified as malicious. It is strongly recommended to uninstall it immediately."
+                                            else -> "No additional information available."
+                                        },
+                                        color = Color(0xFF5A3E2B),
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+@Composable
+fun SplashScreenStandalone() {
+    var visible by remember { mutableStateOf(false) }
+
+    val splashAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "fadeIn"
+    )
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.graphicsLayer { alpha = splashAlpha }
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 60.dp,
+                            topEnd = 60.dp,
+                            bottomStart = 40.dp,
+                            bottomEnd = 40.dp
+                        )
+                    )
+                    .background(Color(0xFF8B1A1A)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "T",
+                    fontSize = 60.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB8860B)
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text = "Testudo",
+                fontSize = 40.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFB22222)
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Your Device Security Guard",
+                fontSize = 14.sp,
+                color = Color(0xFF5A3E2B),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+fun StatusScreen() {
+
+    val context = LocalContext.current
+    var apps by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        apps = getMostUsedApps(context)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFD8CFAE))
+            .padding(16.dp)
+    ) {
+
+        Spacer(Modifier.height(16.dp))
+
+        TitleSection()
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "Device Status",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B)
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = "Most Used Apps (Last 24h)",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF5A3E2B)
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        LazyColumn {
+
+            items(apps) { packageName ->
+
+                StatusAppItem(packageName)
+
+            }
+
+        }
+    }
+}
+
+@Composable
+fun StatusAppItem(packageName: String) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFE8E1C8))
+            .padding(16.dp)
+    ) {
+
+        Column {
+
+            Text(
+                text = packageName,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF8B1A1A)
+            )
+
+            Text(
+                text = "High activity detected",
+                fontSize = 12.sp,
+                color = Color(0xFF5A3E2B)
+            )
+        }
+    }
+}
+
+//PREVIEWS!!!
+@Preview(showBackground = true)
+@Composable
+fun SplashScreenPreview(){
+    TestudoTheme {
+        TestudoTheme {
+            val navController = rememberNavController()
+            SplashScreenStandalone()
+        }
+    }
+}
 @Preview(showBackground = true)
 @Composable
 fun AlertsPreview() {
