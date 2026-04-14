@@ -69,6 +69,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
+
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import com.valentinilk.shimmer . shimmer
 
@@ -1840,46 +1841,149 @@ fun StatusScreen() {
 
     val context = LocalContext.current
     var apps by remember { mutableStateOf<List<String>>(emptyList()) }
+    val isSafe = true
+    var suspiciousCount by remember { mutableStateOf(0)}
+    var virusCount by remember { mutableStateOf(0) }
+    var blockedCount by remember { mutableStateOf(0) }
+
+    val animatedSuspicious by animateIntAsState(
+        targetValue = suspiciousCount,
+        animationSpec = tween(1000),
+        label = "suspicious"
+    )
+
+    val animatedVirus by animateIntAsState(
+        targetValue = virusCount,
+        animationSpec = tween(1000),
+        label = "virus"
+    )
+
+    val animatedBlocked by animateIntAsState(
+        targetValue = blockedCount,
+        animationSpec = tween(1000),
+        label = "blocked"
+    )
 
     LaunchedEffect(Unit) {
         apps = getMostUsedApps(context)
+        suspiciousCount = 0
+        virusCount = 0
+        blockedCount = 0
     }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "safePulse")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    val circleColor = if (isSafe) Color(0xFF00897B) else Color(0xFFB22222)
+    val statusText = if (isSafe) "SAFE!" else "THREAT!"
+    val statusMessage = if (isSafe) "No Virus has been detected" else "Threats found on your device"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0D1B2A))
-            .padding(16.dp)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         Spacer(Modifier.height(16.dp))
 
-        TitleSection()
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        )
+        {
+            TitleSection()
+        }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         Text(
             text = "Device Status",
-            fontSize = 26.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFFCDD9E5)
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .scale(pulse)
+                .clip(CircleShape)
+                .background(circleColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = statusText,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "Most Used Apps (Last 24h)",
-            fontSize = 18.sp,
+            text = statusMessage,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFCDD9E5)
+            color = Color(0xFFCDD9E5),
+            textAlign = TextAlign.Center
         )
+
+        Spacer(Modifier.height(24.dp))
+
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatusStatCard(
+                label = "Suspicious Activities",
+                value = animatedSuspicious,
+                color = Color(0xFFFFC107)
+            )
+            StatusStatCard(
+                label = "Virus Detection",
+                value = animatedVirus,
+                color = Color(0xFFFF3B3B)
+            )
+            StatusStatCard(
+                label = "Virus Blocked",
+                value = animatedBlocked,
+                color = Color(0xFF00897B)
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Most used apps
+        Text(
+            text = "Most Used Apps (Last 24h)",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+
 
         Spacer(Modifier.height(12.dp))
 
-        LazyColumn {
-
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             items(apps) { packageName ->
-
                 StatusAppItem(packageName)
 
             }
@@ -1887,35 +1991,84 @@ fun StatusScreen() {
         }
     }
 }
-
 @Composable
-fun StatusAppItem(packageName: String) {
-
+fun StatusStatCard(
+    label: String,
+    value: Int,
+    color: Color
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFF1C2B3A))
-            .padding(16.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-
-        Column {
-
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Spacer(Modifier.width(12.dp))
             Text(
-                text = packageName,
+                text = label,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFCDD9E5)
             )
-
+        }
+        Text(
+            text = value.toString(),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
+@Composable
+fun StatusAppItem(packageName: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF1C2B3A))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
             Text(
-                text = "High activity detected",
+                text = packageName,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFCDD9E5),
+                fontSize = 14.sp
+            )
+            Text(
+                text = "Active in last 24h",
                 fontSize = 12.sp,
-                color = Color(0xFFCDD9E5)
+                color = Color(0xFF8899AA)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF1E3A5F))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "Safe",
+                color = Color(0xFF00FF87),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }
 }
+
 
 //PREVIEWS!!!
 @Preview(showBackground = true)
@@ -2004,5 +2157,12 @@ fun AiRiskReportPreview() {
     TestudoTheme {
         val navController = rememberNavController()
         AiRiskReportScreen(navController)
+    }
+}
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun StatusScreenPreview() {
+    TestudoTheme {
+        StatusScreen()
     }
 }
