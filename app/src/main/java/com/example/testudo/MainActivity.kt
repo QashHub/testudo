@@ -391,7 +391,7 @@ fun UserScreen() {
 
             Button(
                 onClick = { editMode = !editMode },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3A5F))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
             ) {
                 Text(if (editMode) "Cancel" else "Edit", color = Color.White)
             }
@@ -1696,7 +1696,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
                                         text = name,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
-                                        color = Color(0xFF1E3A5F)
+                                        color = Color(0xFFCDD9E5)
                                     )
                                     Text(
                                         text = status,
@@ -1890,7 +1890,7 @@ fun StatusAppItem(packageName: String) {
             Text(
                 text = packageName,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E3A5F)
+                color = Color(0xFFCDD9E5)
             )
 
             Text(
