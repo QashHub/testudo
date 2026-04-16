@@ -71,5 +71,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation("com.valentinilk.shimmer:compose-shimmer:1.3.0")
     ksp(libs.androidx.room.compiler)
 }
