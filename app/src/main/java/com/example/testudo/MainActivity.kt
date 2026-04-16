@@ -1,4 +1,6 @@
 package com.example.testudo
+import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -14,6 +16,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import android.app.AppOpsManager
 import android.content.Context
+import android.os.Build
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.animation.core.animateFloat
@@ -69,6 +72,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
+import androidx.core.app.ActivityCompat
 import com.example.testudo.data.local.db.DatabaseProvider
 import com.example.testudo.data.local.db.entity.UserProfileEntity
 import kotlinx.coroutines.launch
@@ -79,6 +83,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                1001
+            )
+        }
 
         BackgroundScanWorker.schedule(this)
 
@@ -94,17 +106,19 @@ class MainActivity : ComponentActivity() {
 
 fun hasUsageStatsPermission(context: Context): Boolean {
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+
     val mode = appOps.checkOpNoThrow(
         AppOpsManager.OPSTR_GET_USAGE_STATS,
-        Process.myUid(),
+        android.os.Process.myUid(),
         context.packageName
     )
+
     return mode == AppOpsManager.MODE_ALLOWED
 }
 
-fun requestUsageStatsPermission(context: Context) {
+fun requestUsageStatsPermission(activity: Activity) {
     val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-    context.startActivity(intent)
+    activity.startActivity(intent)
 }
 
 sealed class Screen(val route: String) {
@@ -159,35 +173,42 @@ fun getMostUsedApps(context: Context): List<String> {
 fun PermissionGate() {
 
     val context = LocalContext.current
+    val activity = context as Activity
+
     var hasPermission by remember { mutableStateOf(false) }
     var showSplash by remember { mutableStateOf(true) }
+
+    fun refreshPermission() {
+        hasPermission = hasUsageStatsPermission(context)
+    }
 
     LaunchedEffect(Unit) {
         delay(2500)
         showSplash = false
-        hasPermission = hasUsageStatsPermission(context)
+        refreshPermission()
 
         if (!hasPermission) {
-            requestUsageStatsPermission(context)
+            requestUsageStatsPermission(activity)
         }
     }
 
-    if (showSplash) {
-        SplashScreenStandalone()
-    } else if (hasPermission) {
-        TestudoApp()
-    } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFD8CFAE)),
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2000)
+            refreshPermission()
+        }
+    }
+
+    when {
+        showSplash -> SplashScreenStandalone()
+
+        hasPermission -> TestudoApp()
+
+        else -> Box(
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                "Please enable Usage Access for Testudo",
-                color = Color(0xFF5A3E2B),
-                fontWeight = FontWeight.Bold
-            )
+            Text("Enable Usage Access in Settings")
         }
     }
 }
