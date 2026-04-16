@@ -498,7 +498,8 @@ fun TitleSection() {
         text = "Testudo",
         fontSize = 36.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF1E90FF)
+        color = Color(0xFF1E90FF),
+
     )
 }
 
@@ -710,7 +711,20 @@ fun CacheScreen() {
     ) {
 
         Spacer(Modifier.height(16.dp))
-        TitleSection()
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            TitleSection()
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(text = "Clean Cache",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
         Spacer(Modifier.height(16.dp))
 
         UsageCard()
@@ -962,23 +976,20 @@ fun AlertsScreen() {
             TitleSection()
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+
 
         // Header bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF1E3A5F))
-                .padding(14.dp),
-            contentAlignment = Alignment.Center
-        ) {
+
             Text(
                 "Alerts",
-                color = Color.White,
+                color = Color(0xFFCDD9E5),
                 fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
+                fontSize = 26.sp,
+                modifier = Modifier.padding(horizontal = 16.dp)
+
             )
-        }
+
 
         Spacer(Modifier.height(16.dp))
 
@@ -1287,23 +1298,15 @@ fun SettingsScreen(navController: NavHostController) {
             TitleSection()
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
 
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF1E3A5F))
-                .clickable { navController.popBackStack() }
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "< Settings",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
+        Text(
+            text = "Settings",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -1542,33 +1545,17 @@ fun AiRiskReportScreen(navController: NavHostController) {
             TitleSection()
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
+
 
         Text(
             text = "AI Risk Report",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFFCDD9E5),
-            modifier = Modifier.align(Alignment.CenterHorizontally)
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(Modifier.height(12.dp))
-
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF1E3A5F))
-                .clickable { navController.popBackStack() }
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "< Back",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
 
         Spacer(Modifier.height(12.dp))
 
@@ -1904,13 +1891,14 @@ fun StatusScreen() {
             TitleSection()
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
 
         Text(
             text = "Device Status",
-            fontSize = 22.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFCDD9E5)
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
         Spacer(Modifier.height(24.dp))
