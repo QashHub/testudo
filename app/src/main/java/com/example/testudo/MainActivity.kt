@@ -80,6 +80,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        BackgroundScanWorker.schedule(this)
+
         enableEdgeToEdge()
 
         setContent {
@@ -201,7 +203,8 @@ fun TestudoApp() {
         }
     }
 
-    val alertCount = 2
+    var scanResults by remember { mutableStateOf<List<Triple<String, String, Int>>>(emptyList()) }
+    val alertCount = scanResults.count { it.second == "Malicious" || it.second == "Suspicious" }
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
@@ -226,7 +229,7 @@ fun TestudoApp() {
             }
 
             composable(Screen.Home.route) {
-                MainScreen(navController)
+                MainScreen(navController, scanResults) { scanResults = it }
             }
 
             composable(Screen.Alerts.route) {
@@ -245,9 +248,9 @@ fun TestudoApp() {
                 SettingsScreen(navController)
 
             }
-            
+
             composable(Screen.AIRiskReport.route){
-                AiRiskReportScreen(navController)
+                AiRiskReportScreen(navController, scanResults)
             }
 
             composable(Screen.Status.route) {
@@ -259,7 +262,17 @@ fun TestudoApp() {
 }
 //a
 @Composable
-fun MainScreen(navController: NavHostController) {
+fun MainScreen(
+    navController: NavHostController,
+    scanResults: List<Triple<String, String, Int>>,
+    onScanComplete: (List<Triple<String, String, Int>>) -> Unit
+) {
+    val context = LocalContext.current
+    var isSafe by remember { mutableStateOf(true) }
+    var isScanning by remember { mutableStateOf(false) }
+    var mlResults by remember { mutableStateOf(scanResults) }
+    var scanStatus by remember { mutableStateOf("Scanning...") }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -269,34 +282,57 @@ fun MainScreen(navController: NavHostController) {
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Spacer(modifier = Modifier.height(24.dp))
-
             TitleSection()
-
             Spacer(modifier = Modifier.height(40.dp))
-
             Text(
                 text = "Hello John!",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF5A3E2B)
             )
-
             Spacer(modifier = Modifier.height(32.dp))
 
-
-            Box(contentAlignment = Alignment.Center) {
-
-                SurroundingButtons(navController, alertCount = 2)
-
-                ScanButton(
-                    modifier = Modifier.align(Alignment.Center),
-                    isSafe = true
-                )
+            if (isScanning) {
+                CircularProgressIndicator(color = Color(0xFF8B1A1A))
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(scanStatus, color = Color(0xFF5A3E2B), fontSize = 14.sp)
+            } else {
+                Box(contentAlignment = Alignment.Center) {
+                    SurroundingButtons(navController, alertCount = 2)
+                    ScanButton(
+                        modifier = Modifier.align(Alignment.Center),
+                        isSafe = isSafe,
+                        onClick = {
+                            isScanning = true
+                        }
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(24.dp))
 
+            LaunchedEffect(isScanning) {
+                if (isScanning) {
+                    val results = withContext(Dispatchers.IO) {
+                        val ml = MLEngine(context)
+                        val apps = AppTelemetry.getUserApps(context)
+                        apps.mapIndexed { index, appInfo ->
+                            withContext(Dispatchers.Main) {
+                                scanStatus = "Scanning ${index + 1}/${apps.size}..."
+                            }
+                            val telemetry = AppTelemetry.collectFeatures(context, appInfo)
+                            val result = ml.predict(telemetry.features)
+                            Triple(telemetry.appName, result.label, result.riskScore.toInt())
+                        }.also { ml.close() }
+                    }
+                    mlResults = results
+                    onScanComplete(results)
+                    isSafe = results.none { it.second == "Malicious" || it.second == "Suspicious" }
+                    isScanning = false
+                    scanStatus = "Scanning..."
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -315,10 +351,8 @@ fun MainScreen(navController: NavHostController) {
                 )
             }
         }
-
     }
 }
-
 @Composable
 fun UserScreen() {
 
@@ -604,7 +638,8 @@ fun FeatureButton(
 @Composable
 fun ScanButton(
     modifier: Modifier = Modifier,
-    isSafe: Boolean = true
+    isSafe: Boolean = true,
+    onClick: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
 
@@ -640,7 +675,7 @@ fun ScanButton(
                 .size(180.dp)
                 .clip(CircleShape)
                 .background(Color(0xFFB8860B))
-                .clickable { },
+                .clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -1512,14 +1547,14 @@ fun SettingsToggleItem(
     }
 }
 @Composable
-fun AiRiskReportScreen(navController: NavHostController) {
-
-    val appRisks = remember {
-        listOf(
-            Triple("WhatsApp", "Safe", 18),
-            Triple("Suspicious", "Suspicious", 51),
-            Triple("Torjan.Dropper", "Malicious", 92)
-        )
+fun AiRiskReportScreen(
+    navController: NavHostController,
+    scanResults: List<Triple<String, String, Int>>
+) {
+    val appRisksData = scanResults
+    android.util.Log.d("AIRISKREPORT", "Received ${appRisksData.size} results")
+    appRisksData.forEach {
+        android.util.Log.d("AIRISKREPORT", "${it.first} → ${it.second} (${it.third})")
     }
 
     var selectedFilter by remember { mutableStateOf("All") }
@@ -1538,8 +1573,8 @@ fun AiRiskReportScreen(navController: NavHostController) {
         scoreVisible = true
     }
 
-    val filteredRisks = if (selectedFilter == "All") appRisks
-    else appRisks.filter { it.second == selectedFilter }
+    val filteredRisks = if (selectedFilter == "All") appRisksData
+    else appRisksData.filter { it.second == selectedFilter }
 
     Column(
         modifier = Modifier
@@ -1768,7 +1803,55 @@ fun AiRiskReportScreen(navController: NavHostController) {
                                         },
                                         color = Color(0xFF5A3E2B),
                                         fontSize = 13.sp
+
                                     )
+                                    Spacer(Modifier.height(8.dp))
+
+                                    val ctx = navController.context
+                                    val pkgName = AppTelemetry.getUserApps(ctx)
+                                        .find { app -> ctx.packageManager
+                                            .getApplicationLabel(app).toString() == name }
+                                        ?.packageName ?: ""
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0xFF2E7D32))
+                                                .clickable {
+                                                    if (pkgName.isNotEmpty()) {
+                                                        UserListManager.addToWhitelist(ctx, pkgName)
+                                                        OnDeviceLearning.recordFeedback(ctx, pkgName, FloatArray(15) { 0f }, 0)
+                                                    }
+                                                }
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("✓ Mark Safe", color = Color.White,
+                                                fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0xFFB22222))
+                                                .clickable {
+                                                    if (pkgName.isNotEmpty()) {
+                                                        UserListManager.addToBlacklist(ctx, pkgName)
+                                                        OnDeviceLearning.recordFeedback(ctx, pkgName, FloatArray(15) { 100f }, 2)
+                                                    }
+                                                }
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("✗ Mark Malicious", color = Color.White,
+                                                fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2014,6 +2097,6 @@ fun SettingsScreenPreview() {
 fun AiRiskReportPreview() {
     TestudoTheme {
         val navController = rememberNavController()
-        AiRiskReportScreen(navController)
+        AiRiskReportScreen(navController, emptyList())
     }
 }
