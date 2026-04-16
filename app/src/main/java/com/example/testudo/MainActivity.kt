@@ -69,7 +69,8 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
-
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import com.valentinilk.shimmer . shimmer
 
@@ -205,6 +206,18 @@ fun TestudoApp() {
 
     val alertCount = 2
 
+    var user by remember {
+        mutableStateOf(
+            User(
+                name = "John Doe",
+                email = "john@example.com",
+                phone = "+44 7123456789",
+                paymentDetails = "Visa •••• 1234",
+                isPremium = false
+            )
+        )
+    }
+
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
     Scaffold(
@@ -228,7 +241,7 @@ fun TestudoApp() {
             }
 
             composable(Screen.Home.route) {
-                MainScreen(navController)
+                MainScreen(navController, userName = user.name)
             }
 
             composable(Screen.Alerts.route) {
@@ -236,7 +249,7 @@ fun TestudoApp() {
             }
 
             composable(Screen.User.route) {
-                UserScreen()
+                UserScreen(user = user, onUserChange = { user = it })
             }
 
             composable(Screen.Cache.route) {
@@ -261,7 +274,7 @@ fun TestudoApp() {
 }
 //a
 @Composable
-fun MainScreen(navController: NavHostController) {
+fun MainScreen(navController: NavHostController, userName: String = "John") {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -279,7 +292,7 @@ fun MainScreen(navController: NavHostController) {
             Spacer(modifier = Modifier.height(40.dp))
 
             Text(
-                text = "Hello John!",
+                text = "Hello ${userName.split(" ").first()}!",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFFCDD9E5)
@@ -322,19 +335,9 @@ fun MainScreen(navController: NavHostController) {
 }
 
 @Composable
-fun UserScreen() {
+fun UserScreen(user: User, onUserChange: (User) -> Unit) {
 
-    var user by remember {
-        mutableStateOf(
-            User(
-                name = "John Doe",
-                email = "john@example.com",
-                phone = "+44 7123456789",
-                paymentDetails = "Visa •••• 1234",
-                isPremium = false
-            )
-        )
-    }
+
 
     var editMode by remember { mutableStateOf(false) }
 
@@ -343,6 +346,7 @@ fun UserScreen() {
             .fillMaxSize()
             .background(Color(0xFF0D1B2A))
             .padding(20.dp)
+            .verticalScroll(rememberScrollState())
     ) {
 
         Spacer(Modifier.height(16.dp))
@@ -363,28 +367,80 @@ fun UserScreen() {
             color = Color(0xFFCDD9E5)
         )
 
+        Spacer(Modifier.height(16.dp))
+
+// Profile Initials
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1E3A5F)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = user.name
+                            .split(" ")
+                            .take(2)
+                            .joinToString("") { it.first().uppercase() },
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00FF87)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = user.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFCDD9E5)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
         Spacer(Modifier.height(20.dp))
 
         EditableField("Name", user.name, editMode) {
-            user = user.copy(name = it)
+            onUserChange(user.copy(name = it))
         }
 
-        EditableField("Email", user.email, editMode) {
-            user = user.copy(email = it)
+        EditableField(
+            label = "Email",
+            value = user.email,
+            editable = editMode,
+            validate = { it.contains("@") && it.contains(".") },
+            errorMessage = "Please enter a valid email address"
+        ) {
+            onUserChange(user.copy(email = it))
         }
 
-        EditableField("Phone", user.phone, editMode) {
-            user = user.copy(phone = it)
+        EditableField(
+            label = "Phone",
+            value = user.phone,
+            editable = editMode,
+            validate = { it.startsWith("+") && it.length >= 10 },
+            errorMessage = "Please enter a valid phone number"
+        ) {
+            onUserChange(user.copy(phone = it))
         }
+
 
         EditableField("Payment Details", user.paymentDetails, editMode) {
-            user = user.copy(paymentDetails = it)
+            onUserChange(user.copy(paymentDetails = it))
         }
 
         Spacer(Modifier.height(16.dp))
 
         PremiumToggle(user.isPremium) {
-            user = user.copy(isPremium = it)
+            onUserChange(user.copy(isPremium = it))
         }
 
         Spacer(Modifier.height(24.dp))
@@ -444,6 +500,8 @@ fun EditableField(
     label: String,
     value: String,
     editable: Boolean,
+    validate: ((String) -> Boolean)? = null,
+    errorMessage: String? = null,
     onValueChange: (String) -> Unit
 ) {
 
@@ -643,11 +701,8 @@ fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
             selected = currentRoute == Screen.Home.route,
             onClick = {
                 navController.navigate(Screen.Home.route) {
-                    popUpTo(navController.graph.startDestinationId) {
-                        saveState = true
-                    }
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
-                    restoreState = true
                 }
             },
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
@@ -658,7 +713,7 @@ fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
             selected = currentRoute == Screen.User.route,
             onClick = {
                 navController.navigate(Screen.User.route) {
-                    popUpTo(navController.graph.startDestinationId) {
+                    popUpTo(Screen.Home.route) {
                         saveState = true
                     }
                     launchSingleTop = true
@@ -673,8 +728,10 @@ fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
         NavigationBarItem(
             selected = currentRoute == Screen.Settings.route,
             onClick = {
-                navController.navigate(Screen.Settings.route){
-                    popUpTo(navController.graph.startDestinationId) {saveState = true}
+                navController.navigate(Screen.Settings.route) {
+                    popUpTo(Screen.Home.route) {
+                        saveState = true
+                    }
                     launchSingleTop = true
                     restoreState = true
                 }
@@ -2093,7 +2150,16 @@ fun TestudoAppPreview() {
 @Composable
 fun UserScreenPreview() {
     TestudoTheme {
-        UserScreen()
+        UserScreen(
+            user = User(
+                name = "John Doe",
+                email = "john@example.com",
+                phone = "+44 7123456789",
+                paymentDetails = "Visa •••• 1234",
+                isPremium = false
+            ),
+            onUserChange = {}
+        )
     }
 }
 
