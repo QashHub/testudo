@@ -1,6 +1,8 @@
 package com.example.testudo
 import android.content.Intent
 import android.os.Bundle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -197,6 +199,7 @@ fun PermissionGate() {
 fun TestudoApp() {
 
     val navController = rememberNavController()
+    var scanResults by remember { mutableStateOf<List<AppRisk>>(emptyList()) }
 
     LaunchedEffect(navController) {
         navController.addOnDestinationChangedListener { _, destination, _ ->
@@ -241,7 +244,12 @@ fun TestudoApp() {
             }
 
             composable(Screen.Home.route) {
-                MainScreen(navController, userName = user.name)
+                MainScreen(navController = navController,
+                    scanResults = scanResults,
+                    onScanComplete = { results ->
+                        scanResults = results
+                    }
+                )
             }
 
             composable(Screen.Alerts.route) {
@@ -260,9 +268,9 @@ fun TestudoApp() {
                 SettingsScreen(navController)
 
             }
-            
+
             composable(Screen.AIRiskReport.route){
-                AiRiskReportScreen(navController)
+                AiRiskReportScreen(navController, scanResults)
             }
 
             composable(Screen.Status.route) {
@@ -272,16 +280,27 @@ fun TestudoApp() {
         }
     }
 }
-//a
+
+
 @Composable
-fun MainScreen(navController: NavHostController, userName: String = "John") {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF0D1B2A))
-    ) {
+fun MainScreen(
+    navController: NavHostController,
+    scanResults: List<AppRisk>,
+    onScanComplete: (List<AppRisk>) -> Unit
+) {
+
+    val context = LocalContext.current
+    var scanning by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFD8CFAE))
+                .padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
@@ -307,8 +326,44 @@ fun MainScreen(navController: NavHostController, userName: String = "John") {
 
                 ScanButton(
                     modifier = Modifier.align(Alignment.Center),
-                    isSafe = true
+                    isSafe = scanResults.none { it.riskScore > 80 },
+                    scanResults = scanResults,
+                    onScan = {
+
+                        scanning = true
+
+                        CoroutineScope(Dispatchers.IO).launch {
+
+                            val results = scanInstalledApps(context)
+
+                            withContext(Dispatchers.Main) {
+
+                                onScanComplete(results)
+                                scanning = false
+
+                                snackbarHostState.showSnackbar(
+                                    "Scan complete — ${results.size} apps checked"
+                                )
+                            }
+
+                        }
+
+                    }
                 )
+
+                if (scanning) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    CircularProgressIndicator(
+                        color = Color(0xFF8B1A1A)
+                    )
+
+                    Text(
+                        "Scanning apps...",
+                        color = Color(0xFF5A3E2B),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -639,7 +694,9 @@ fun FeatureButton(
 @Composable
 fun ScanButton(
     modifier: Modifier = Modifier,
-    isSafe: Boolean = true
+    isSafe: Boolean = true,
+    scanResults: List<AppRisk>,
+    onScan: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
 
@@ -674,8 +731,8 @@ fun ScanButton(
             modifier = Modifier
                 .size(180.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF00897B))
-                .clickable { },
+                .background(Color(0xFFB8860B))
+                .clickable { onScan() },
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -685,6 +742,7 @@ fun ScanButton(
                 color = Color(0xFFCDD9E5)
             )
         }
+        val alerts = generateAlerts(scanResults)
     }
 }
 @Composable
@@ -851,17 +909,40 @@ fun scanInstalledApps(context: Context): List<AppRisk> {
     val pm = context.packageManager
     val apps = pm.getInstalledApplications(0)
 
-    return apps.map {
+    val suspiciousPermissions = listOf(
+        "android.permission.SEND_SMS",
+        "android.permission.READ_SMS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CONTACTS"
+    )
 
-        val risk = when {
-            it.packageName.contains("test") -> 70
-            it.packageName.contains("hack") -> 90
-            else -> (5..40).random()
+    return apps.map { app ->
+
+        val packageInfo = pm.getPackageInfo(
+            app.packageName,
+            android.content.pm.PackageManager.GET_PERMISSIONS
+        )
+
+        val permissions = packageInfo.requestedPermissions ?: emptyArray()
+
+        var riskScore = 0
+
+        permissions.forEach {
+            if (suspiciousPermissions.contains(it)) {
+                riskScore += 20
+            }
         }
 
+        if (app.packageName.contains("hack")) riskScore += 60
+        if (app.packageName.contains("spy")) riskScore += 50
+        if (app.packageName.contains("test")) riskScore += 20
+
+        riskScore = riskScore.coerceAtMost(100)
+
         AppRisk(
-            name = pm.getApplicationLabel(it).toString(),
-            riskScore = risk
+            name = pm.getApplicationLabel(app).toString(),
+            packageName = app.packageName,
+            riskScore = riskScore
         )
     }
 }
@@ -1562,14 +1643,18 @@ fun SettingsToggleItem(
     }
 }
 @Composable
-fun AiRiskReportScreen(navController: NavHostController) {
+fun AiRiskReportScreen(navController: NavHostController,
+                       scanResults: List<AppRisk>) {
 
-    val appRisks = remember {
-        listOf(
-            Triple("WhatsApp", "Safe", 18),
-            Triple("Suspicious", "Suspicious", 51),
-            Triple("Torjan.Dropper", "Malicious", 92)
-        )
+    val appRisks = scanResults.map {
+
+        val status = when {
+            it.riskScore >= 80 -> "Malicious"
+            it.riskScore >= 50 -> "Suspicious"
+            else -> "Safe"
+        }
+
+        Triple(it.name, status, it.riskScore)
     }
 
     var selectedFilter by remember { mutableStateOf("All") }
@@ -1694,29 +1779,36 @@ fun AiRiskReportScreen(navController: NavHostController) {
         Spacer(Modifier.height(12.dp))
 
         // App risk list
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
+
             if (filteredRisks.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF1C2B3A))
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "No $selectedFilter apps found",
-                        color = Color(0xFFCDD9E5),
-                        fontWeight = FontWeight.Bold
-                    )
+
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFE8E1C8))
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No $selectedFilter apps found",
+                            color = Color(0xFF5A3E2B),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
+
             } else {
-                filteredRisks.forEach { (name, status, score) ->
+
+                items(filteredRisks) { (name, status, score) ->
 
                     val rowColor = when (status) {
                         "Safe" -> Color(0xFF00FF87)
@@ -1736,6 +1828,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
                                 expandedItem = if (isExpanded) null else name
                             }
                     ) {
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1743,14 +1836,18 @@ fun AiRiskReportScreen(navController: NavHostController) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+
                             Row(verticalAlignment = Alignment.CenterVertically) {
+
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
                                         .clip(CircleShape)
                                         .background(rowColor)
                                 )
+
                                 Spacer(Modifier.width(10.dp))
+
                                 Column {
                                     Text(
                                         text = name,
@@ -1758,6 +1855,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
                                         fontSize = 16.sp,
                                         color = Color(0xFFCDD9E5)
                                     )
+
                                     Text(
                                         text = status,
                                         fontSize = 13.sp,
@@ -1765,6 +1863,7 @@ fun AiRiskReportScreen(navController: NavHostController) {
                                     )
                                 }
                             }
+
                             Text(
                                 text = score.toString(),
                                 fontWeight = FontWeight.Bold,
@@ -1773,26 +1872,30 @@ fun AiRiskReportScreen(navController: NavHostController) {
                             )
                         }
 
-                        // Expanded detail
                         AnimatedVisibility(
                             visible = isExpanded,
                             enter = expandVertically(),
                             exit = shrinkVertically()
                         ) {
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(rowColor.copy(alpha = 0.15f))
                                     .padding(horizontal = 20.dp, vertical = 12.dp)
                             ) {
+
                                 Column {
+
                                     Text(
                                         text = "Risk Score: $score / 100",
                                         fontWeight = FontWeight.Bold,
                                         color = rowColor,
                                         fontSize = 13.sp
                                     )
+
                                     Spacer(Modifier.height(4.dp))
+
                                     Text(
                                         text = when (status) {
                                             "Safe" -> "This app has no known threats. It behaves normally and requests only standard permissions."
@@ -2085,7 +2188,9 @@ fun StatusAppItem(packageName: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+
         Column {
+
             Text(
                 text = packageName,
                 fontWeight = FontWeight.Bold,
@@ -2183,7 +2288,10 @@ fun FeatureButtonPreview() {
 @Composable
 fun ScanButtonPreview() {
     TestudoTheme {
-        ScanButton()
+        ScanButton(
+            scanResults = emptyList(),
+            onScan = {}
+        )
     }
 }
 
@@ -2210,7 +2318,8 @@ fun SettingsScreenPreview() {
 fun AiRiskReportPreview() {
     TestudoTheme {
         val navController = rememberNavController()
-        AiRiskReportScreen(navController)
+        AiRiskReportScreen(navController,
+            scanResults = emptyList())
     }
 }
 @Preview(showBackground = true, showSystemUi = true)
