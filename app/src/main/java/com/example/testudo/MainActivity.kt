@@ -292,6 +292,7 @@ fun MainScreen(
     val context = LocalContext.current
     var scanning by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    var userName = "John"
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
