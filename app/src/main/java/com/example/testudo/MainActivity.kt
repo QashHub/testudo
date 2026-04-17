@@ -447,39 +447,39 @@ fun UserScreen() {
         Spacer(Modifier.height(16.dp))
 
 // Profile Initials
-//        Box(
-//            modifier = Modifier.fillMaxWidth(),
-//            contentAlignment = Alignment.Center
-//        ) {
-//            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//                Box(
-//                    modifier = Modifier
-//                        .size(80.dp)
-//                        .clip(CircleShape)
-//                        .background(Color(0xFF1E3A5F)),
-//                    contentAlignment = Alignment.Center
-//                ) {
-//                    Text(
-//                        text = user.name
-//                            .split(" ")
-//                            .take(2)
-//                            .joinToString("") { it.first().uppercase() },
-//                        fontSize = 28.sp,
-//                        fontWeight = FontWeight.Bold,
-//                        color = Color(0xFF00FF87)
-//                    )
-//                }
-//
-//                Spacer(Modifier.height(8.dp))
-//
-//                Text(
-//                    text = user.name,
-//                    fontSize = 16.sp,
-//                    fontWeight = FontWeight.SemiBold,
-//                    color = Color(0xFFCDD9E5)
-//                )
-//            }
-//        }
+       Box(
+           modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+       ) {
+           Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                       .size(80.dp)
+                        .clip(CircleShape)
+                       .background(Color(0xFF1E3A5F)),
+                   contentAlignment = Alignment.Center
+               ) {
+                    Text(
+                        text = currentUser.name
+                            .split(" ")
+                            .take(2)
+                           .joinToString("") { it.first().uppercase() },
+                       fontSize = 28.sp,
+                       fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00FF87)
+                    )
+                }
+
+               Spacer(Modifier.height(8.dp))
+
+               Text(
+                   text = currentUser.name,
+                    fontSize = 16.sp,
+                   fontWeight = FontWeight.SemiBold,
+                   color = Color(0xFFCDD9E5)
+               )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -528,7 +528,7 @@ fun UserScreen() {
                         }
                         editMode = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB8860B))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
                 ) {
                     Text("Save", color = Color.White)
                 }
@@ -745,7 +745,7 @@ fun ScanButton(
             modifier = Modifier
                 .size(180.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFB8860B))
+                .background(Color(0xFF00897B))
                 .clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
@@ -2298,16 +2298,8 @@ fun TestudoAppPreview() {
 @Composable
 fun UserScreenPreview() {
     TestudoTheme {
-        UserScreen(
-//            user = User(
-//                name = "John Doe",
-//                email = "john@example.com",
-//                phone = "+44 7123456789",
-//                paymentDetails = "Visa •••• 1234",
-//                isPremium = false
-            )
-            //onUserChange = {}
-        //)
+        UserScreen()
+
     }
 }
 
