@@ -79,5 +79,6 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
     implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.14.0")
+    implementation("com.valentinilk.shimmer:compose-shimmer:1.3.0")
     ksp(libs.androidx.room.compiler)
 }

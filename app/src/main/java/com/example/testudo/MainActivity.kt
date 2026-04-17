@@ -3,6 +3,8 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -72,6 +74,10 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Policy
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
+//import com.valentinilk.shimmer.shimmer
 import androidx.core.app.ActivityCompat
 import com.example.testudo.data.local.db.DatabaseProvider
 import com.example.testudo.data.local.db.entity.UserProfileEntity
@@ -269,7 +275,7 @@ fun TestudoApp() {
                 SettingsScreen(navController)
 
             }
-
+            
             composable(Screen.AIRiskReport.route){
                 AiRiskReportScreen(navController, scanResults)
             }
@@ -281,7 +287,8 @@ fun TestudoApp() {
         }
     }
 }
-//a
+
+
 @Composable
 fun MainScreen(
     navController: NavHostController,
@@ -310,7 +317,7 @@ fun MainScreen(
                 text = "Hello John!",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF5A3E2B)
+                color = Color(0xFFCDD9E5)
             )
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -359,7 +366,7 @@ fun MainScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF8B1A1A))
+                    .background(Color(0xFF1E3A5F))
                     .clickable { navController.navigate(Screen.AIRiskReport.route) }
                     .padding(vertical = 18.dp),
                 contentAlignment = Alignment.Center
@@ -413,8 +420,9 @@ fun UserScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE))
+            .background(Color(0xFF0D1B2A))
             .padding(20.dp)
+            .verticalScroll(rememberScrollState())
     ) {
 
         Spacer(Modifier.height(16.dp))
@@ -432,8 +440,47 @@ fun UserScreen() {
             "User Profile",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+            color = Color(0xFFCDD9E5)
         )
+
+        Spacer(Modifier.height(16.dp))
+
+// Profile Initials
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1E3A5F)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = user.name
+                            .split(" ")
+                            .take(2)
+                            .joinToString("") { it.first().uppercase() },
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00FF87)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = user.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFCDD9E5)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         Spacer(Modifier.height(20.dp))
 
@@ -465,7 +512,7 @@ fun UserScreen() {
 
             Button(
                 onClick = { editMode = !editMode },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B1A1A))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
             ) {
                 Text(if (editMode) "Cancel" else "Edit", color = Color.White)
             }
@@ -499,7 +546,7 @@ fun PremiumToggle(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFE8E1C8))
+            .background(Color(0xFF1C2B3A))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -508,7 +555,7 @@ fun PremiumToggle(
         Text(
             "Premium Account",
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+            color = Color(0xFFCDD9E5)
         )
 
         Switch(
@@ -523,6 +570,8 @@ fun EditableField(
     label: String,
     value: String,
     editable: Boolean,
+    validate: ((String) -> Boolean)? = null,
+    errorMessage: String? = null,
     onValueChange: (String) -> Unit
 ) {
 
@@ -531,7 +580,7 @@ fun EditableField(
         Text(
             label,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+            color = Color(0xFFCDD9E5)
         )
 
         if (editable) {
@@ -541,14 +590,14 @@ fun EditableField(
                 onValueChange = onValueChange,
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = androidx.compose.ui.text.TextStyle(
-                    color = Color(0xFF5A3E2B)
+                    color = Color(0xFFCDD9E5)
                 ),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color(0xFF5A3E2B),
-                    unfocusedTextColor = Color(0xFF5A3E2B),
-                    focusedBorderColor = Color(0xFF8B1A1A),
-                    unfocusedBorderColor = Color(0xFF8B1A1A),
-                    cursorColor = Color(0xFF8B1A1A)
+                    focusedTextColor = Color(0xFFCDD9E5),
+                    unfocusedTextColor = Color(0xFFCDD9E5),
+                    focusedBorderColor = Color(0xFF1E3A5F),
+                    unfocusedBorderColor = Color(0xFF1E3A5F),
+                    cursorColor = Color(0xFF1E3A5F)
                 )
             )
 
@@ -558,12 +607,12 @@ fun EditableField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFFE8E1C8))
+                    .background(Color(0xFF1C2B3A))
                     .padding(14.dp)
             ) {
                 Text(
                     value,
-                    color = Color(0xFF5A3E2B),
+                    color = Color(0xFFCDD9E5),
                     fontSize = 16.sp
                 )
             }
@@ -577,7 +626,7 @@ fun TitleSection() {
         text = "Testudo",
         fontSize = 36.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFFB22222)
+        color = Color(0xFF1E90FF),
     )
 }
 
@@ -592,7 +641,7 @@ fun SurroundingButtons(navController: NavHostController, alertCount: Int = 2) {
             BadgedBox(
                 badge = {
                     if (alertCount > 0) {
-                        Badge(containerColor = Color(0xFFB22222)) {
+                        Badge(containerColor = Color(0xFF1E90FF)) {
                             Text(
                                 text = alertCount.toString(),
                                 color = Color.White,
@@ -644,7 +693,7 @@ fun FeatureButton(
         modifier = Modifier
             .size(width = 120.dp, height = 80.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF8B1A1A))
+            .background(Color(0xFF1E3A5F))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -674,7 +723,7 @@ fun ScanButton(
         label = "pulseScale"
     )
 
-    val ringColor = if (isSafe) Color(0xFF2E7D32) else Color(0xFFB22222)
+    val ringColor = if (isSafe) Color(0xFF00FF87) else Color(0xFF1E90FF)
 
     Box(
         modifier = modifier
@@ -703,7 +752,7 @@ fun ScanButton(
                 text = "SCAN",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF5A3E2B)
+                color = Color(0xFFCDD9E5)
             )
         }
     }
@@ -715,18 +764,15 @@ fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
         navController.currentBackStackEntryAsState().value?.destination?.route
 
     NavigationBar(
-        containerColor = Color(0xFFC9C2A6)
+        containerColor = Color(0xFF0D1B2A)
     ) {
 
         NavigationBarItem(
             selected = currentRoute == Screen.Home.route,
             onClick = {
                 navController.navigate(Screen.Home.route) {
-                    popUpTo(navController.graph.startDestinationId) {
-                        saveState = true
-                    }
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
-                    restoreState = true
                 }
             },
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
@@ -737,7 +783,7 @@ fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
             selected = currentRoute == Screen.User.route,
             onClick = {
                 navController.navigate(Screen.User.route) {
-                    popUpTo(navController.graph.startDestinationId) {
+                    popUpTo(Screen.Home.route) {
                         saveState = true
                     }
                     launchSingleTop = true
@@ -752,8 +798,10 @@ fun BottomNavBar(navController: NavHostController, alertCount: Int = 0) {
         NavigationBarItem(
             selected = currentRoute == Screen.Settings.route,
             onClick = {
-                navController.navigate(Screen.Settings.route){
-                    popUpTo(navController.graph.startDestinationId) {saveState = true}
+                navController.navigate(Screen.Settings.route) {
+                    popUpTo(Screen.Home.route) {
+                        saveState = true
+                    }
                     launchSingleTop = true
                     restoreState = true
                 }
@@ -786,11 +834,24 @@ fun CacheScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE))
+            .background(Color(0xFF0D1B2A))
     ) {
 
         Spacer(Modifier.height(16.dp))
-        TitleSection()
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            TitleSection()
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(text = "Clean Cache",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
         Spacer(Modifier.height(16.dp))
 
         UsageCard()
@@ -798,13 +859,27 @@ fun CacheScreen() {
         Spacer(Modifier.height(16.dp))
 
         if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                CircularProgressIndicator()
+                repeat(6) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .shimmer()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF1C2B3A))
+
+                    )
+                }
             }
-        } else {
+
+        }
+        else {
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
@@ -846,17 +921,40 @@ fun scanInstalledApps(context: Context): List<AppRisk> {
     val pm = context.packageManager
     val apps = pm.getInstalledApplications(0)
 
-    return apps.map {
+    val suspiciousPermissions = listOf(
+        "android.permission.SEND_SMS",
+        "android.permission.READ_SMS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CONTACTS"
+    )
 
-        val risk = when {
-            it.packageName.contains("test") -> 70
-            it.packageName.contains("hack") -> 90
-            else -> (5..40).random()
+    return apps.map { app ->
+
+        val packageInfo = pm.getPackageInfo(
+            app.packageName,
+            android.content.pm.PackageManager.GET_PERMISSIONS
+        )
+
+        val permissions = packageInfo.requestedPermissions ?: emptyArray()
+
+        var riskScore = 0
+
+        permissions.forEach {
+            if (suspiciousPermissions.contains(it)) {
+                riskScore += 20
+            }
         }
 
+        if (app.packageName.contains("hack")) riskScore += 60
+        if (app.packageName.contains("spy")) riskScore += 50
+        if (app.packageName.contains("test")) riskScore += 20
+
+        riskScore = riskScore.coerceAtMost(100)
+
         AppRisk(
-            name = pm.getApplicationLabel(it).toString(),
-            riskScore = risk
+            name = pm.getApplicationLabel(app).toString(),
+            packageName = app.packageName,
+            riskScore = riskScore
         )
     }
 }
@@ -882,7 +980,7 @@ fun CacheItem(
                 .weight(1f)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp))
-                .background(Color(0xFF8B1A1A))
+                .background(Color(0xFF1E3A5F))
                 .padding(start = 20.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -906,7 +1004,7 @@ fun CacheItem(
                 .width(130.dp)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
-                .background(Color(0xFFB8860B))
+                .background(Color(0xFF00897B))
                 .clickable {
                     openAppCacheSettings(context, packageName)
                 },
@@ -929,7 +1027,7 @@ fun UsageCard() {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(Color(0xFF8B1A1A))
+            .background(Color(0xFF1E3A5F))
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -957,7 +1055,7 @@ fun UsageCard() {
             modifier = Modifier
                 .size(90.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFB8860B))
+                .background(Color(0xFF00897B))
                 .padding(4.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -965,14 +1063,14 @@ fun UsageCard() {
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)
-                    .background(Color(0xFFB8860B)),
+                    .background(Color(0xFF00897B)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     "75%",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF5A3E2B)
+                    color = Color(0xFFCDD9E5)
                 )
             }
         }
@@ -986,14 +1084,14 @@ fun UsageCircle(percent: String) {
         modifier = Modifier
             .size(90.dp)
             .clip(CircleShape)
-            .background(Color(0xFFB8860B)),
+            .background(Color(0xFF00897B)),
         contentAlignment = Alignment.Center
     ) {
         Text(
             percent,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+            color = Color(0xFFCDD9E5)
         )
     }
 }
@@ -1017,7 +1115,7 @@ fun AlertsScreen() {
         modifier = Modifier
             .fillMaxSize()
 
-            .background(Color(0xFFD8CFAE))
+            .background(Color(0xFF0D1B2A))
     ) {
         Spacer(Modifier.height(24.dp))
 
@@ -1028,23 +1126,20 @@ fun AlertsScreen() {
             TitleSection()
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+
 
         // Header bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF8B1A1A))
-                .padding(14.dp),
-            contentAlignment = Alignment.Center
-        ) {
+
             Text(
                 "Alerts",
-                color = Color.White,
+                color = Color(0xFFCDD9E5),
                 fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
+                fontSize = 26.sp,
+                modifier = Modifier.padding(horizontal = 16.dp)
+
             )
-        }
+
 
         Spacer(Modifier.height(16.dp))
 
@@ -1054,7 +1149,7 @@ fun AlertsScreen() {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFFE8E1C8))
+                .background(Color(0xFF1C2B3A))
                 .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -1062,20 +1157,20 @@ fun AlertsScreen() {
                 Text(
                     "No alerts available",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF5A3E2B),
+                    color = Color(0xFFCDD9E5),
                     fontSize = 18.sp
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "You'll see important notifications here when they arrive.",
                     textAlign = TextAlign.Center,
-                    color = Color(0xFF5A3E2B),
+                    color = Color(0xFFCDD9E5),
                     fontSize = 14.sp
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "✓  You're all caught up!",
-                    color = Color(0xFF8B1A1A),
+                    color = Color(0xFF1E3A5F),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
@@ -1096,13 +1191,13 @@ fun AlertsScreen() {
                 "Previous Alerts",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF5A3E2B)
+                color = Color(0xFFCDD9E5)
             )
             if (alerts.isNotEmpty()) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF8B1A1A))
+                        .background(Color(0xFF1E3A5F))
                         .clickable { alerts = emptyList() }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
@@ -1125,13 +1220,13 @@ fun AlertsScreen() {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFE8E1C8))
+                    .background(Color(0xFF1C2B3A))
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     "No previous alerts",
-                    color = Color(0xFF5A3E2B),
+                    color = Color(0xFFCDD9E5),
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -1164,7 +1259,7 @@ fun AlertsHeader() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF8B1A1A))
+            .background(Color(0xFF1E3A5F))
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1182,7 +1277,7 @@ fun NoAlertsSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFE8E1C8))
+            .background(Color(0xFF1C2B3A))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -1236,7 +1331,7 @@ fun AlertItem(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFB22222))
+                    .background(Color(0xFF1E90FF))
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
@@ -1254,27 +1349,27 @@ fun AlertItem(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .background(Color(0xFFE6D9A8))
+                    .background(Color(0xFF1C2B3A))
                     .padding(14.dp)
             ) {
                 Row(verticalAlignment = Alignment.Top) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = Color(0xFF8B1A1A),
+                        tint = Color(0xFF1E3A5F),
                         modifier = Modifier
                             .size(18.dp)
                             .padding(top = 2.dp)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(leftText, color = Color(0xFF5A3E2B), fontSize = 13.sp)
+                    Text(leftText, color = Color(0xFFCDD9E5), fontSize = 13.sp)
                 }
             }
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .background(Color(0xFF8B1A1A))
+                    .background(Color(0xFF1E3A5F))
                     .padding(14.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -1302,7 +1397,7 @@ fun ProfileCard(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 10.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF8B1A1A))
+            .background(Color(0xFF1E3A5F))
             .clickable { onClick() }
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1342,7 +1437,7 @@ fun SettingsScreen(navController: NavHostController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE))
+            .background(Color(0xFF0D1B2A))
     ) {
         Spacer(Modifier.height(24.dp))
 
@@ -1353,23 +1448,15 @@ fun SettingsScreen(navController: NavHostController) {
             TitleSection()
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
 
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF8B1A1A))
-                .clickable { navController.popBackStack() }
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "< Settings",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
+        Text(
+            text = "Settings",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -1463,7 +1550,7 @@ fun SettingsSectionHeader(title: String){
         text = title.uppercase(),
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF5A3E2B),
+        color = Color(0xFFCDD9E5),
         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
     )
 }
@@ -1480,7 +1567,7 @@ fun SettingsToggleItem(
     var expanded by remember { mutableStateOf(false) }
 
     val backgroundColor by animateColorAsState(
-        targetValue = if (checked) Color(0xFF8B1A1A) else Color(0xFF5A3E2B),
+        targetValue = if (checked) Color(0xFF1E3A5F) else Color(0xFF2A3F55),
         animationSpec = tween(durationMillis = 400),
         label = "bgColor"
     )
@@ -1510,7 +1597,7 @@ fun SettingsToggleItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFFE8D5D5),
+                tint = Color(0xFFCDD9E5),
                 modifier = Modifier
                     .size(28.dp)
                     .padding(end = 4.dp)
@@ -1529,7 +1616,7 @@ fun SettingsToggleItem(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = subtitle,
-                    color = Color(0xFFE8D5D5),
+                    color = Color(0xFFCDD9E5),
                     fontSize = 12.sp
                 )
             }
@@ -1539,9 +1626,9 @@ fun SettingsToggleItem(
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFFB8860B),
-                    uncheckedThumbColor = Color(0xFFD8CFAE),
-                    uncheckedTrackColor = Color(0xFF5A3E2B)
+                    checkedTrackColor = Color(0xFF00FF87),
+                    uncheckedThumbColor = Color(0xFF8899AA),
+                    uncheckedTrackColor = Color(0xFF2A3F55)
                 )
             )
         }
@@ -1560,7 +1647,7 @@ fun SettingsToggleItem(
             ) {
                 Text(
                     text = expandedDetail,
-                    color = Color(0xFFE8D5D5),
+                    color = Color(0xFFCDD9E5),
                     fontSize = 13.sp
                 )
             }
@@ -1600,7 +1687,7 @@ fun AiRiskReportScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE))
+            .background(Color(0xFF0D1B2A))
     ) {
         Spacer(Modifier.height(24.dp))
 
@@ -1608,33 +1695,17 @@ fun AiRiskReportScreen(
             TitleSection()
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
+
 
         Text(
             text = "AI Risk Report",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B),
-            modifier = Modifier.align(Alignment.CenterHorizontally)
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(Modifier.height(12.dp))
-
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF8B1A1A))
-                .clickable { navController.popBackStack() }
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "< Back",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
 
         Spacer(Modifier.height(12.dp))
 
@@ -1643,7 +1714,7 @@ fun AiRiskReportScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFFE8E1C8))
+                .background(Color(0xFF1C2B3A))
                 .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1651,14 +1722,14 @@ fun AiRiskReportScreen(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFB8860B)),
+                        .background(Color(0xFF00897B)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = animatedScore.toString(),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF5A3E2B)
+                        color = Color(0xFFCDD9E5)
                     )
                 }
 
@@ -1669,13 +1740,13 @@ fun AiRiskReportScreen(
                         text = "Risk Level",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = Color(0xFF5A3E2B)
+                        color = Color(0xFFCDD9E5)
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Most of your apps are safe but we found 2 suspicious apps and 1 malicious app.",
                         fontSize = 14.sp,
-                        color = Color(0xFF5A3E2B)
+                        color = Color(0xFFCDD9E5)
                     )
                 }
             }
@@ -1696,8 +1767,8 @@ fun AiRiskReportScreen(
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
                         .background(
-                            if (selectedFilter == filter) Color(0xFF8B1A1A)
-                            else Color(0xFFE8E1C8)
+                            if (selectedFilter == filter) Color(0xFF1E3A5F)
+                            else Color(0xFF1C2B3A)
                         )
                         .clickable { selectedFilter = filter }
                         .padding(vertical = 8.dp),
@@ -1705,7 +1776,7 @@ fun AiRiskReportScreen(
                 ) {
                     Text(
                         text = filter,
-                        color = if (selectedFilter == filter) Color.White else Color(0xFF5A3E2B),
+                        color = if (selectedFilter == filter) Color.White else Color(0xFFCDD9E5),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
@@ -1716,35 +1787,42 @@ fun AiRiskReportScreen(
         Spacer(Modifier.height(12.dp))
 
         // App risk list
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
+
             if (filteredRisks.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFE8E1C8))
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "No $selectedFilter apps found",
-                        color = Color(0xFF5A3E2B),
-                        fontWeight = FontWeight.Bold
-                    )
+
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFE8E1C8))
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No $selectedFilter apps found",
+                            color = Color(0xFF5A3E2B),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
+
             } else {
-                filteredRisks.forEach { (name, status, score) ->
+
+                items(filteredRisks) { (name, status, score) ->
 
                     val rowColor = when (status) {
-                        "Safe" -> Color(0xFF2E7D32)
-                        "Suspicious" -> Color(0xFFF9A825)
-                        "Malicious" -> Color(0xFFB22222)
-                        else -> Color(0xFF8B1A1A)
+                        "Safe" -> Color(0xFF00FF87)
+                        "Suspicious" -> Color(0xFFFFC107)
+                        "Malicious" -> Color(0xFF1E90FF)
+                        else -> Color(0xFF1E3A5F)
                     }
 
                     val isExpanded = expandedItem == name
@@ -1753,7 +1831,7 @@ fun AiRiskReportScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFE8E1C8))
+                            .background(Color(0xFF1C2B3A))
                             .clickable {
                                 expandedItem = if (isExpanded) null else name
                             }
@@ -1778,7 +1856,7 @@ fun AiRiskReportScreen(
                                         text = name,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
-                                        color = Color(0xFF8B1A1A)
+                                        color = Color(0xFFCDD9E5)
                                     )
                                     Text(
                                         text = status,
@@ -1791,11 +1869,10 @@ fun AiRiskReportScreen(
                                 text = score.toString(),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
-                                color = Color(0xFF5A3E2B)
+                                color = Color(0xFFCDD9E5)
                             )
                         }
 
-                        // Expanded detail
                         AnimatedVisibility(
                             visible = isExpanded,
                             enter = expandVertically(),
@@ -1822,9 +1899,8 @@ fun AiRiskReportScreen(
                                             "Malicious" -> "This app has been identified as malicious. It is strongly recommended to uninstall it immediately."
                                             else -> "No additional information available."
                                         },
-                                        color = Color(0xFF5A3E2B),
+                                        color = Color(0xFFCDD9E5),
                                         fontSize = 13.sp
-
                                     )
                                     Spacer(Modifier.height(8.dp))
 
@@ -1900,7 +1976,7 @@ fun SplashScreenStandalone() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE)),
+            .background(Color(0xFF0D1B2A)),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -1918,14 +1994,14 @@ fun SplashScreenStandalone() {
                             bottomEnd = 40.dp
                         )
                     )
-                    .background(Color(0xFF8B1A1A)),
+                    .background(Color(0xFF1E3A5F)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "T",
                     fontSize = 60.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFB8860B)
+                    color = Color(0xFF00FF87)
                 )
             }
 
@@ -1935,7 +2011,7 @@ fun SplashScreenStandalone() {
                 text = "Testudo",
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFB22222)
+                color = Color(0xFF1E90FF)
             )
 
             Spacer(Modifier.height(8.dp))
@@ -1943,7 +2019,7 @@ fun SplashScreenStandalone() {
             Text(
                 text = "Your Device Security Guard",
                 fontSize = 14.sp,
-                color = Color(0xFF5A3E2B),
+                color = Color(0xFFCDD9E5),
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -1955,46 +2031,150 @@ fun StatusScreen() {
 
     val context = LocalContext.current
     var apps by remember { mutableStateOf<List<String>>(emptyList()) }
+    val isSafe = true
+    var suspiciousCount by remember { mutableStateOf(0)}
+    var virusCount by remember { mutableStateOf(0) }
+    var blockedCount by remember { mutableStateOf(0) }
+
+    val animatedSuspicious by animateIntAsState(
+        targetValue = suspiciousCount,
+        animationSpec = tween(1000),
+        label = "suspicious"
+    )
+
+    val animatedVirus by animateIntAsState(
+        targetValue = virusCount,
+        animationSpec = tween(1000),
+        label = "virus"
+    )
+
+    val animatedBlocked by animateIntAsState(
+        targetValue = blockedCount,
+        animationSpec = tween(1000),
+        label = "blocked"
+    )
 
     LaunchedEffect(Unit) {
         apps = getMostUsedApps(context)
+        suspiciousCount = 0
+        virusCount = 0
+        blockedCount = 0
     }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "safePulse")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    val circleColor = if (isSafe) Color(0xFF00897B) else Color(0xFFB22222)
+    val statusText = if (isSafe) "SAFE!" else "THREAT!"
+    val statusMessage = if (isSafe) "No Virus has been detected" else "Threats found on your device"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE))
-            .padding(16.dp)
+            .background(Color(0xFF0D1B2A))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         Spacer(Modifier.height(16.dp))
 
-        TitleSection()
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        )
+        {
+            TitleSection()
+        }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         Text(
             text = "Device Status",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .scale(pulse)
+                .clip(CircleShape)
+                .background(circleColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = statusText,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "Most Used Apps (Last 24h)",
-            fontSize = 18.sp,
+            text = statusMessage,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5A3E2B)
+            color = Color(0xFFCDD9E5),
+            textAlign = TextAlign.Center
         )
+
+        Spacer(Modifier.height(24.dp))
+
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatusStatCard(
+                label = "Suspicious Activities",
+                value = animatedSuspicious,
+                color = Color(0xFFFFC107)
+            )
+            StatusStatCard(
+                label = "Virus Detection",
+                value = animatedVirus,
+                color = Color(0xFFFF3B3B)
+            )
+            StatusStatCard(
+                label = "Virus Blocked",
+                value = animatedBlocked,
+                color = Color(0xFF00897B)
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Most used apps
+        Text(
+            text = "Most Used Apps (Last 24h)",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFCDD9E5),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+
 
         Spacer(Modifier.height(12.dp))
 
-        LazyColumn {
-
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             items(apps) { packageName ->
-
                 StatusAppItem(packageName)
 
             }
@@ -2002,17 +2182,54 @@ fun StatusScreen() {
         }
     }
 }
-
 @Composable
-fun StatusAppItem(packageName: String) {
-
+fun StatusStatCard(
+    label: String,
+    value: Int,
+    color: Color
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFE8E1C8))
-            .padding(16.dp)
+            .background(Color(0xFF1C2B3A))
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = label,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFCDD9E5)
+            )
+        }
+        Text(
+            text = value.toString(),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
+@Composable
+fun StatusAppItem(packageName: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF1C2B3A))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
 
         Column {
@@ -2020,13 +2237,26 @@ fun StatusAppItem(packageName: String) {
             Text(
                 text = packageName,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF8B1A1A)
+                color = Color(0xFFCDD9E5),
+                fontSize = 14.sp
             )
-
             Text(
-                text = "High activity detected",
+                text = "Active in last 24h",
                 fontSize = 12.sp,
-                color = Color(0xFF5A3E2B)
+                color = Color(0xFF8899AA)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF1E3A5F))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "Safe",
+                color = Color(0xFF00FF87),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -2067,7 +2297,16 @@ fun TestudoAppPreview() {
 @Composable
 fun UserScreenPreview() {
     TestudoTheme {
-        UserScreen()
+        UserScreen(
+            user = User(
+                name = "John Doe",
+                email = "john@example.com",
+                phone = "+44 7123456789",
+                paymentDetails = "Visa •••• 1234",
+                isPremium = false
+            ),
+            onUserChange = {}
+        )
     }
 }
 
