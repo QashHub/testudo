@@ -305,7 +305,7 @@ fun MainScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFD8CFAE))
+            .background(Color(0xFF0D1B2A))
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -410,7 +410,7 @@ fun UserScreen() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFD8CFAE)),
+                .background(Color(0xFF0D1B2A)),
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator()
