@@ -77,11 +77,12 @@ import androidx.compose.material.icons.filled.Policy
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
-//import com.valentinilk.shimmer.shimmer
+import com.valentinilk.shimmer.shimmer
 import androidx.core.app.ActivityCompat
 import com.example.testudo.data.local.db.DatabaseProvider
 import com.example.testudo.data.local.db.entity.UserProfileEntity
 import kotlinx.coroutines.launch
+
 //AA
 //Initial UI Development Made by Andres any questions please ask.
 
@@ -446,39 +447,39 @@ fun UserScreen() {
         Spacer(Modifier.height(16.dp))
 
 // Profile Initials
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF1E3A5F)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = user.name
-                            .split(" ")
-                            .take(2)
-                            .joinToString("") { it.first().uppercase() },
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00FF87)
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                Text(
-                    text = user.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFCDD9E5)
-                )
-            }
-        }
+//        Box(
+//            modifier = Modifier.fillMaxWidth(),
+//            contentAlignment = Alignment.Center
+//        ) {
+//            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                Box(
+//                    modifier = Modifier
+//                        .size(80.dp)
+//                        .clip(CircleShape)
+//                        .background(Color(0xFF1E3A5F)),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Text(
+//                        text = user.name
+//                            .split(" ")
+//                            .take(2)
+//                            .joinToString("") { it.first().uppercase() },
+//                        fontSize = 28.sp,
+//                        fontWeight = FontWeight.Bold,
+//                        color = Color(0xFF00FF87)
+//                    )
+//                }
+//
+//                Spacer(Modifier.height(8.dp))
+//
+//                Text(
+//                    text = user.name,
+//                    fontSize = 16.sp,
+//                    fontWeight = FontWeight.SemiBold,
+//                    color = Color(0xFFCDD9E5)
+//                )
+//            }
+//        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -2298,15 +2299,15 @@ fun TestudoAppPreview() {
 fun UserScreenPreview() {
     TestudoTheme {
         UserScreen(
-            user = User(
-                name = "John Doe",
-                email = "john@example.com",
-                phone = "+44 7123456789",
-                paymentDetails = "Visa •••• 1234",
-                isPremium = false
-            ),
-            onUserChange = {}
-        )
+//            user = User(
+//                name = "John Doe",
+//                email = "john@example.com",
+//                phone = "+44 7123456789",
+//                paymentDetails = "Visa •••• 1234",
+//                isPremium = false
+            )
+            //onUserChange = {}
+        //)
     }
 }
 
