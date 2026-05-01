@@ -19,12 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,36 +28,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.testudo.ui.components.EditableField
 import com.example.testudo.ui.components.PremiumToggle
 import com.example.testudo.ui.components.TitleSection
-import com.example.testudo.data.local.db.DatabaseProvider
-import com.example.testudo.data.local.db.entity.UserProfileEntity
-import kotlinx.coroutines.launch
+import com.example.testudo.viewmodel.UserViewModel
 
 @Composable
-fun UserScreen() {
-
-    val context = LocalContext.current
-    val db = remember { DatabaseProvider.getDatabase(context) }
-    val dao = remember { db.userProfileDao() }
-    val coroutineScope = rememberCoroutineScope()
-
-    var user by remember { mutableStateOf<UserProfileEntity?>(null) }
-    var editMode by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        val existingUser = dao.getUserProfile()
-
-        user = existingUser ?: UserProfileEntity(
-            id = 1,
-            name = "John Doe",
-            email = "john@example.com",
-            phone = "+44 7123456789",
-            paymentDetails = "Visa •••• 1234",
-            isPremium = false
-        )
-    }
+fun UserScreen(
+    vm: UserViewModel = viewModel()
+) {
+    val user by vm.user
+    val editMode by vm.editMode
 
     if (user == null) {
         Box(
@@ -75,7 +52,9 @@ fun UserScreen() {
         }
         return
     }
+
     val currentUser = user ?: return
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -83,7 +62,6 @@ fun UserScreen() {
             .padding(20.dp)
             .verticalScroll(rememberScrollState())
     ) {
-
         Spacer(Modifier.height(16.dp))
 
         Box(
@@ -104,7 +82,6 @@ fun UserScreen() {
 
         Spacer(Modifier.height(16.dp))
 
-// Profile Initials
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
@@ -120,6 +97,7 @@ fun UserScreen() {
                     Text(
                         text = currentUser.name
                             .split(" ")
+                            .filter { it.isNotBlank() }
                             .take(2)
                             .joinToString("") { it.first().uppercase() },
                         fontSize = 28.sp,
@@ -139,38 +117,35 @@ fun UserScreen() {
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(36.dp))
 
         EditableField("Name", currentUser.name, editMode) {
-            user = currentUser.copy(name = it)
+            vm.updateName(it)
         }
 
         EditableField("Email", currentUser.email, editMode) {
-            user = currentUser.copy(email = it)
+            vm.updateEmail(it)
         }
 
-        EditableField("Phone", currentUser.phone, editMode) {
-            user = currentUser.copy(phone = it)
+        EditableField("Phone Number", currentUser.phone, editMode) {
+            vm.updatePhone(it)
         }
 
         EditableField("Payment Details", currentUser.paymentDetails, editMode) {
-            user = currentUser.copy(paymentDetails = it)
+            vm.updatePaymentDetails(it)
         }
 
         Spacer(Modifier.height(16.dp))
 
         PremiumToggle(currentUser.isPremium) {
-            user = currentUser.copy(isPremium = it)
+            vm.updatePremium(it)
         }
 
         Spacer(Modifier.height(24.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-
             Button(
-                onClick = { editMode = !editMode },
+                onClick = { vm.toggleEditMode() },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
             ) {
                 Text(if (editMode) "Cancel" else "Edit", color = Color.White)
@@ -178,14 +153,7 @@ fun UserScreen() {
 
             if (editMode) {
                 Button(
-                    onClick = {
-                        user?.let { updatedUser ->
-                            coroutineScope.launch {
-                                dao.insertOrUpdateUserProfile(updatedUser)
-                            }
-                        }
-                        editMode = false
-                    },
+                    onClick = { vm.saveUser() },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
                 ) {
                     Text("Save", color = Color.White)

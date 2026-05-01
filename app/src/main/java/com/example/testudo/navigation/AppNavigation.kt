@@ -25,6 +25,8 @@ import com.example.testudo.ui.screens.SettingsScreen
 import com.example.testudo.ui.screens.SplashScreenStandalone
 import com.example.testudo.ui.screens.StatusScreen
 import com.example.testudo.ui.screens.UserScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.testudo.viewmodel.HomeViewModel
 
 @Composable
 fun TestudoApp() {
@@ -37,10 +39,15 @@ fun TestudoApp() {
         }
     }
 
-    var scanResults by remember { mutableStateOf<List<Triple<String, String, Int>>>(emptyList()) }
-    val alertCount = scanResults.count { it.second == "Malicious" || it.second == "Suspicious" }
-
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+    val homeViewModel: HomeViewModel = viewModel()
+    val homeState = homeViewModel.uiState.value
+
+    val scanResults = homeState.scanResults
+    val alertCount = scanResults.count {
+        it.second == "Malicious" || it.second == "Suspicious"
+    }
 
     Scaffold(
         bottomBar = {
@@ -63,7 +70,10 @@ fun TestudoApp() {
             }
 
             composable(Screen.Home.route) {
-                MainScreen(navController, scanResults) { scanResults = it }
+                MainScreen(
+                    navController = navController,
+                    vm = homeViewModel
+                )
             }
 
             composable(Screen.Alerts.route) {
@@ -83,8 +93,11 @@ fun TestudoApp() {
 
             }
 
-            composable(Screen.AIRiskReport.route){
-                AiRiskReportScreen(navController, scanResults)
+            composable(Screen.AIRiskReport.route) {
+                AiRiskReportScreen(
+                    navController = navController,
+                    scanResults = scanResults
+                )
             }
 
             composable(Screen.Status.route) {
