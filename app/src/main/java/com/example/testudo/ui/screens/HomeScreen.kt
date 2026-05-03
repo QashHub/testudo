@@ -29,6 +29,13 @@ import com.example.testudo.ui.components.TitleSection
 import com.example.testudo.ui.components.ScanButton
 import com.example.testudo.ui.components.SurroundingButtons
 import com.example.testudo.viewmodel.HomeViewModel
+import android.util.Log
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.example.testudo.data.local.db.DatabaseProvider
+import com.example.testudo.data.local.db.entity.ScanHistoryEntity
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
@@ -36,6 +43,31 @@ fun MainScreen(
     vm: HomeViewModel = viewModel()
 ) {
     val state by vm.uiState
+    val context = LocalContext.current
+    val db = remember { DatabaseProvider.getDatabase(context) }
+    val scanHistoryDao = remember { db.scanHistoryDao() }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun performScan() {
+        coroutineScope.launch {
+            val scanRecord = ScanHistoryEntity(
+                packageName = "com.example.testapp",
+                appName = "Test App",
+                scannedAt = System.currentTimeMillis(),
+                riskScore = 25,
+                riskLevel = "Low",
+                behaviorSummary = "Manual scan completed. No major threats detected.",
+                actionTaken = "None",
+                isManualScan = true,
+                modelVersion = "demo-v1"
+            )
+
+            scanHistoryDao.insertScanHistory(scanRecord)
+
+            val allScans = scanHistoryDao.getAllScanHistory()
+            Log.d("DB_SCAN_TEST", "Total scan records: ${allScans.size}")
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -81,6 +113,7 @@ fun MainScreen(
                         isSafe = state.isSafe,
                         onClick = {
                             vm.startScan()
+                            performScan()
                         }
                     )
                 }
