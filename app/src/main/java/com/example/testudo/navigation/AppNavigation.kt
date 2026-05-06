@@ -1,5 +1,6 @@
 package com.example.testudo.navigation
 
+import com.example.testudo.ui.screens.ThreatDetailScreen
 import android.util.Log
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -98,6 +99,11 @@ fun TestudoApp() {
                     navController = navController,
                     scanResults = scanResults
                 )
+            }
+
+            composable("threat_detail/{packageName}") { backStackEntry ->
+                val pkg = backStackEntry.arguments?.getString("packageName") ?: ""
+                ThreatDetailScreen(navController, pkg)
             }
 
             composable(Screen.Status.route) {

@@ -10,4 +10,8 @@ sealed class Screen(val route: String) {
     object Cache : Screen("cache")
     object Settings : Screen("settings")
     object AIRiskReport : Screen("ai_risk_report")
+
+    object ThreatDetail : Screen("threat_detail/{packageName}") {
+        fun createRoute(packageName: String) = "threat_detail/$packageName"
+    }
 }
