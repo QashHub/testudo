@@ -1,6 +1,12 @@
 package com.example.testudo.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import com.example.testudo.AppTelemetry
+import com.example.testudo.navigation.Screen
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -50,10 +56,13 @@ fun AiRiskReportScreen(
     val appRisksData = scanResults
     val selectedFilter = state.selectedFilter
     val filters = state.filters
-    val expandedItem = state.expandedItem
+    var expandedItem by remember { mutableStateOf<String?>(null) }
+
+    val avgScore = if (appRisksData.isEmpty()) 0
+    else appRisksData.map { it.third }.average().toInt()
 
     val animatedScore by animateIntAsState(
-        targetValue = if (state.scoreVisible) 18 else 0,
+        targetValue = if (state.scoreVisible) avgScore else 0,
         animationSpec = tween(durationMillis = 1000),
         label = "score"
     )
@@ -132,7 +141,10 @@ fun AiRiskReportScreen(
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Most of your apps are safe but we found 3 suspicious apps and 1 malicious app.",
+                        text = "Scanned ${appRisksData.size} apps. " +
+                                "${appRisksData.count { it.second == "Safe" }} safe, " +
+                                "${appRisksData.count { it.second == "Suspicious" }} suspicious, " +
+                                "${appRisksData.count { it.second == "Malicious" }} malicious.",
                         fontSize = 14.sp,
                         color = Color(0xFFCDD9E5)
                     )
@@ -190,13 +202,13 @@ fun AiRiskReportScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFE8E1C8))
+                            .background(Color(0xFF1C2B3A))
                             .padding(20.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "No $selectedFilter apps found",
-                            color = Color(0xFF5A3E2B),
+                            color = Color(0xFFCDD9E5),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -218,7 +230,18 @@ fun AiRiskReportScreen(
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color(0xFF1C2B3A))
                             .clickable {
-                                vm.toggleExpandedItem(name)
+                                val ctx = navController.context
+                                val pkg = ctx.packageManager
+                                    .getInstalledApplications(0)
+                                    .find { app ->
+                                        ctx.packageManager.getApplicationLabel(app).toString() == name
+                                    }?.packageName
+
+                                if (pkg != null) {
+                                    navController.navigate(Screen.ThreatDetail.createRoute(pkg))
+                                } else {
+                                    expandedItem = if (isExpanded) null else name
+                                }
                             }
                     ) {
                         Row(

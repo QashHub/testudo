@@ -15,27 +15,16 @@ import java.nio.channels.FileChannel
  */
 class MLEngine(context: Context) {
 
-    private val interpreter: Interpreter = Interpreter(loadModelFile(context))
+    private val interpreter: Interpreter = Interpreter(
+        loadModelFile(context),
+        Interpreter.Options().apply {
+            setNumThreads(2)
+            setUseXNNPACK(false)
+        }
+    )
 
-    // Must match feature_columns.pkl order exactly
     companion object {
-        val FEATURE_ORDER = listOf(
-            "cpu_usage_pct",          // features[0]
-            "mem_usage_mb",           // features[1]
-            "net_bytes_sent_kb",      // features[2]
-            "net_bytes_recv_kb",      // features[3]
-            "file_write_ops",         // features[4]
-            "file_read_ops",          // features[5]
-            "syscall_count",          // features[6]
-            "permissions_requested",  // features[7]
-            "background_wakeups",     // features[8]
-            "inter_app_comms",        // features[9]
-            "battery_drain_pct_hr",   // features[10]
-            "dns_queries",            // features[11]
-            "unique_remote_ips",      // features[12]
-            "crypto_api_calls",       // features[13]
-            "reflection_api_calls"    // features[14]
-        )
+
 
         // Risk score thresholds (matches SAS Section 5.1)
         const val THRESHOLD_SAFE       = 30f
@@ -58,36 +47,32 @@ class MLEngine(context: Context) {
      * @return MLResult with classification and risk score
      */
     fun predict(features: FloatArray): MLResult {
-        require(features.size == 15) {
-            "Expected 15 features, got ${features.size}. Check FEATURE_ORDER."
+        require(features.size == 50) {
+            "Expected 50 features, got ${features.size}. Check FEATURE_ORDER."
         }
 
-        val input  = arrayOf(features)           // shape [1, 15]
-        val output = Array(1) { FloatArray(3) }  // shape [1, 3]
+        val inputBuffer = Array(1) { features }
+        val outputBuffer = Array(1) { FloatArray(2) }
+        interpreter.run(inputBuffer, outputBuffer)
 
-        interpreter.run(input, output)
+        val probs = outputBuffer[0]
+        val probBenign  = probs[0]
+        val probMalware = probs[1]
 
-        val probs         = output[0]
-        val probSafe      = probs[0]
-        val probSuspicious = probs[1]
-        val probMalicious = probs[2]
-
-        // Risk score formula — matches SAS Section 5.1 spec
-        val riskScore = (probSuspicious * 50f + probMalicious * 100f)
-            .coerceIn(0f, 100f)
+        val riskScore = (probMalware * 100f).coerceIn(0f, 100f)
 
         val label = when {
-            riskScore < THRESHOLD_SAFE       -> "Safe"
-            riskScore < THRESHOLD_SUSPICIOUS -> "Suspicious"
-            else                             -> "Malicious"
+            riskScore < 30f  -> "Safe"
+            riskScore < 60f  -> "Suspicious"
+            else             -> "Malicious"
         }
 
         return MLResult(
             label          = label,
             riskScore      = riskScore,
-            probSafe       = probSafe,
-            probSuspicious = probSuspicious,
-            probMalicious  = probMalicious
+            probSafe       = probBenign,
+            probSuspicious = probMalware * 0.5f,
+            probMalicious  = probMalware
         )
     }
 
@@ -95,31 +80,7 @@ class MLEngine(context: Context) {
      * Convenience function — build features from raw telemetry
      * and run prediction in one call.
      */
-    fun predictFromTelemetry(
-        cpuUsagePct: Float,
-        memUsageMb: Float,
-        netBytesSentKb: Float,
-        netBytesRecvKb: Float,
-        fileWriteOps: Float,
-        fileReadOps: Float,
-        syscallCount: Float,
-        permissionsRequested: Float,
-        backgroundWakeups: Float,
-        interAppComms: Float,
-        batteryDrainPctHr: Float,
-        dnsQueries: Float,
-        uniqueRemoteIps: Float,
-        cryptoApiCalls: Float,
-        reflectionApiCalls: Float
-    ): MLResult {
-        val features = floatArrayOf(
-            cpuUsagePct, memUsageMb, netBytesSentKb, netBytesRecvKb,
-            fileWriteOps, fileReadOps, syscallCount, permissionsRequested,
-            backgroundWakeups, interAppComms, batteryDrainPctHr,
-            dnsQueries, uniqueRemoteIps, cryptoApiCalls, reflectionApiCalls
-        )
-        return predict(features)
-    }
+
 
     private fun loadModelFile(context: Context): MappedByteBuffer {
         val fd = context.assets.openFd("testudo_model.tflite")

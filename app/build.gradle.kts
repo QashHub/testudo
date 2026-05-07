@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.testudo"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -54,7 +54,7 @@ android {
 }
 
 dependencies {
-
+    implementation("com.valentinilk.shimmer:compose-shimmer:1.2.0")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation(libs.androidx.core.ktx)
@@ -76,9 +76,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
-    implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.14.0")
-    implementation("com.valentinilk.shimmer:compose-shimmer:1.3.0")
+    implementation("org.tensorflow:tensorflow-lite:+")
+    implementation("org.tensorflow:tensorflow-lite-support:+")
+    implementation("org.tensorflow:tensorflow-lite-select-tf-ops:+")
     ksp(libs.androidx.room.compiler)
 }
