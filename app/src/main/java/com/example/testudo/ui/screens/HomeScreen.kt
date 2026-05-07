@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.testudo.data.local.db.DatabaseProvider
 import com.example.testudo.data.local.db.entity.ScanHistoryEntity
 import kotlinx.coroutines.launch
+import com.example.testudo.data.local.db.entity.ThreatLogEntity
 
 @Composable
 fun MainScreen(
@@ -46,6 +47,7 @@ fun MainScreen(
     val context = LocalContext.current
     val db = remember { DatabaseProvider.getDatabase(context) }
     val scanHistoryDao = remember { db.scanHistoryDao() }
+    val threatLogDao = remember { db.threatLogDao() }
     val coroutineScope = rememberCoroutineScope()
 
     fun performScan() {
@@ -54,18 +56,37 @@ fun MainScreen(
                 packageName = "com.example.testapp",
                 appName = "Test App",
                 scannedAt = System.currentTimeMillis(),
-                riskScore = 25,
-                riskLevel = "Low",
-                behaviorSummary = "Manual scan completed. No major threats detected.",
-                actionTaken = "None",
+                riskScore = 65,
+                riskLevel = "Suspicious",
+                behaviorSummary = "Suspicious background activity detected.",
+                actionTaken = "Review Required",
                 isManualScan = true,
                 modelVersion = "demo-v1"
             )
 
-            scanHistoryDao.insertScanHistory(scanRecord)
+            val scanId = scanHistoryDao.insertScanHistory(scanRecord)
+
+            if (scanRecord.riskLevel == "Suspicious" || scanRecord.riskLevel == "Malicious") {
+                val threatLog = ThreatLogEntity(
+                    scanHistoryId = scanId,
+                    packageName = scanRecord.packageName,
+                    appName = scanRecord.appName,
+                    threatType = "Suspicious Behaviour",
+                    severity = scanRecord.riskLevel,
+                    detectionReason = scanRecord.behaviorSummary,
+                    detectedAt = System.currentTimeMillis(),
+                    confidenceScore = 0.75f,
+                    recommendedAction = "Review app activity"
+                )
+
+                threatLogDao.insertThreatLog(threatLog)
+            }
 
             val allScans = scanHistoryDao.getAllScanHistory()
+            val allThreats = threatLogDao.getAllThreatLogs()
+
             Log.d("DB_SCAN_TEST", "Total scan records: ${allScans.size}")
+            Log.d("DB_THREAT_TEST", "Total threat records: ${allThreats.size}")
         }
     }
 
