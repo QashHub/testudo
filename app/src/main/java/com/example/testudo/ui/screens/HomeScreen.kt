@@ -37,6 +37,8 @@ import com.example.testudo.data.local.db.DatabaseProvider
 import com.example.testudo.data.local.db.entity.ScanHistoryEntity
 import kotlinx.coroutines.launch
 import com.example.testudo.data.local.db.entity.ThreatLogEntity
+import com.example.testudo.data.local.db.entity.QuarantineRecordEntity
+
 
 @Composable
 fun MainScreen(
@@ -48,6 +50,7 @@ fun MainScreen(
     val db = remember { DatabaseProvider.getDatabase(context) }
     val scanHistoryDao = remember { db.scanHistoryDao() }
     val threatLogDao = remember { db.threatLogDao() }
+    val quarantineDao = remember { db.quarantineDao() }
     val coroutineScope = rememberCoroutineScope()
 
     fun performScan() {
@@ -79,14 +82,35 @@ fun MainScreen(
                     recommendedAction = "Review app activity"
                 )
 
-                threatLogDao.insertThreatLog(threatLog)
+                val threatLogId = threatLogDao.insertThreatLog(threatLog)
+                val quarantineRecord = QuarantineRecordEntity(
+                    threatLogId = threatLogId,
+
+                    packageName = scanRecord.packageName,
+                    appName = scanRecord.appName,
+
+                    quarantinedAt = System.currentTimeMillis(),
+                    quarantineReason = "Suspicious application quarantined",
+
+                    actionStatus = "Quarantined",
+
+                    evidenceSnapshotPath = null,
+
+                    permissionsRevoked = true,
+                    backgroundExecutionBlocked = true,
+                    isRestored = false,
+                    )
+
+                quarantineDao.insertQuarantineRecord(quarantineRecord)
             }
 
             val allScans = scanHistoryDao.getAllScanHistory()
             val allThreats = threatLogDao.getAllThreatLogs()
+            val allQuarantine = quarantineDao.getAllQuarantineRecords()
 
             Log.d("DB_SCAN_TEST", "Total scan records: ${allScans.size}")
             Log.d("DB_THREAT_TEST", "Total threat records: ${allThreats.size}")
+            Log.d("DB_QUARANTINE_TEST", "Total quarantine records: ${allQuarantine.size}")
         }
     }
 
