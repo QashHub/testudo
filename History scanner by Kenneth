@@ -1,0 +1,114 @@
+import androidx.room.*
+import java.util.*
+
+@Entity(
+    tableName = "scan_history",
+    indices = [
+        Index(value = ["packageName"]),
+        Index(value = ["scanTime"]),
+        Index(value = ["classification"])
+    ]
+)
+data class ScanHistory(
+
+    @PrimaryKey(autoGenerate = true)
+    val scanId: Int = 0,
+
+    val appName: String,
+
+    val packageName: String,
+
+    val scanTime: Long, // store as timestamp
+
+    val riskScore: Int, // 0–100
+
+    val classification: ScanClassification,
+
+    val actionTaken: ScanAction
+)
+
+//Enums
+enum class ScanClassification {
+    SAFE,
+    SUSPICIOUS,
+    MALICIOUS
+}
+
+enum class ScanAction {
+    NONE,
+    ALERTED,
+    QUARANTINED,
+    BLOCKED
+}
+
+//type converter
+class Converters {
+
+    @TypeConverter
+    fun fromClassification(value: ScanClassification): String {
+        return value.name
+    }
+
+    @TypeConverter
+    fun toClassification(value: String): ScanClassification {
+        return ScanClassification.valueOf(value)
+    }
+
+    @TypeConverter
+    fun fromAction(value: ScanAction): String {
+        return value.name
+    }
+
+    @TypeConverter
+    fun toAction(value: String): ScanAction {
+        return ScanAction.valueOf(value)
+    }
+}
+
+//DAO (Data Access Object)
+@Dao
+interface ScanHistoryDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScan(scan: ScanHistory)
+
+    @Query("SELECT * FROM scan_history ORDER BY scanTime DESC")
+    suspend fun getAllScans(): List<ScanHistory>
+
+    @Query("SELECT * FROM scan_history WHERE packageName = :packageName")
+    suspend fun getScansByPackage(packageName: String): List<ScanHistory>
+
+    @Query("DELETE FROM scan_history")
+    suspend fun deleteAll()
+
+    @Delete
+    suspend fun deleteScan(scan: ScanHistory)
+}
+
+//room database
+@Database(
+    entities = [ScanHistory::class],
+    version = 1
+)
+@TypeConverters(Converters::class)
+abstract class AppDatabase : RoomDatabase() {
+
+    abstract fun scanHistoryDao(): ScanHistoryDao
+
+    companion object {
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getDatabase(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "antivirus_db"
+                ).build()
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
+}
