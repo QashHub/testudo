@@ -9,6 +9,15 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission"/>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -31,7 +40,6 @@
             </intent-filter>
         </activity>
 
-        <!-- InstallMonitor — fires when any app is installed -->
         <receiver
             android:name=".InstallMonitor"
             android:exported="true">
@@ -42,7 +50,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Device Admin Receiver -->
         <receiver
             android:name=".AdminReceiver"
             android:description="@string/app_name"

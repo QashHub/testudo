@@ -1,65 +1,65 @@
 package com.example.testudo.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import com.example.testudo.AppTelemetry
-import com.example.testudo.navigation.Screen
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.testudo.QuarantineManager
+import com.example.testudo.RealScanner
+import com.example.testudo.navigation.Screen
 import com.example.testudo.ui.components.TitleSection
 import com.example.testudo.viewmodel.AiRiskReportViewModel
+
+// ── Shared data model ─────────────────────────────────────────────────────────
+data class ScanResultItem(
+    val appName: String,
+    val packageName: String,
+    val status: String,
+    val riskScore: Int
+)
 
 @Composable
 fun AiRiskReportScreen(
     navController: NavHostController,
-    scanResults: List<Triple<String, String, Int>>,
+    scanResults: List<ScanResultItem>,          // ← updated type
     vm: AiRiskReportViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val state by vm.uiState
-
-    val appRisksData = scanResults
-    val selectedFilter = state.selectedFilter
-    val filters = state.filters
     var expandedItem by remember { mutableStateOf<String?>(null) }
 
-    val avgScore = if (appRisksData.isEmpty()) 0
-    else appRisksData.map { it.third }.average().toInt()
+    // Track which packages are currently quarantined so the UI updates instantly
+    var quarantinedPackages by remember {
+        mutableStateOf(
+            QuarantineManager.getAll(context).map { it.packageName }.toSet()
+        )
+    }
+
+    val selectedFilter = state.selectedFilter
+    val filters = state.filters
+
+    val avgScore = if (scanResults.isEmpty()) 0
+    else scanResults.map { it.riskScore }.average().toInt()
 
     val animatedScore by animateIntAsState(
         targetValue = if (state.scoreVisible) avgScore else 0,
@@ -67,16 +67,10 @@ fun AiRiskReportScreen(
         label = "score"
     )
 
-    LaunchedEffect(Unit) {
-        vm.showScore()
-    }
+    LaunchedEffect(Unit) { vm.showScore() }
 
-    val filteredRisks =
-        if (selectedFilter == "All") {
-            appRisksData
-        } else {
-            appRisksData.filter { it.second == selectedFilter }
-        }
+    val filteredRisks = if (selectedFilter == "All") scanResults
+    else scanResults.filter { it.status == selectedFilter }
 
     Column(
         modifier = Modifier
@@ -85,10 +79,7 @@ fun AiRiskReportScreen(
     ) {
         Spacer(Modifier.height(24.dp))
 
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             TitleSection()
         }
 
@@ -104,6 +95,7 @@ fun AiRiskReportScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // ── Summary card ──────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -127,9 +119,7 @@ fun AiRiskReportScreen(
                         color = Color(0xFFCDD9E5)
                     )
                 }
-
                 Spacer(Modifier.width(16.dp))
-
                 Column {
                     Text(
                         text = "Risk Level",
@@ -137,14 +127,12 @@ fun AiRiskReportScreen(
                         fontSize = 18.sp,
                         color = Color(0xFFCDD9E5)
                     )
-
                     Spacer(Modifier.height(4.dp))
-
                     Text(
-                        text = "Scanned ${appRisksData.size} apps. " +
-                                "${appRisksData.count { it.second == "Safe" }} safe, " +
-                                "${appRisksData.count { it.second == "Suspicious" }} suspicious, " +
-                                "${appRisksData.count { it.second == "Malicious" }} malicious.",
+                        text = "Scanned ${scanResults.size} apps. " +
+                                "${scanResults.count { it.status == "Safe" }} safe, " +
+                                "${scanResults.count { it.status == "Suspicious" }} suspicious, " +
+                                "${scanResults.count { it.status == "Malicious" }} malicious.",
                         fontSize = 14.sp,
                         color = Color(0xFFCDD9E5)
                     )
@@ -154,6 +142,7 @@ fun AiRiskReportScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // ── Filter tabs ───────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -169,17 +158,13 @@ fun AiRiskReportScreen(
                             if (selectedFilter == filter) Color(0xFF1E3A5F)
                             else Color(0xFF1C2B3A)
                         )
-                        .clickable {
-                            vm.selectFilter(filter)
-                        }
+                        .clickable { vm.selectFilter(filter) }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = filter,
-                        color =
-                        if (selectedFilter == filter) Color.White
-                        else Color(0xFFCDD9E5),
+                        color = if (selectedFilter == filter) Color.White else Color(0xFFCDD9E5),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
@@ -189,6 +174,7 @@ fun AiRiskReportScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // ── App list ──────────────────────────────────────────────────
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -214,15 +200,15 @@ fun AiRiskReportScreen(
                     }
                 }
             } else {
-                items(filteredRisks) { (name, status, score) ->
-                    val rowColor = when (status) {
-                        "Safe" -> Color(0xFF00FF87)
+                items(filteredRisks, key = { it.packageName }) { item ->
+                    val rowColor = when (item.status) {
+                        "Safe"       -> Color(0xFF00FF87)
                         "Suspicious" -> Color(0xFFFFC107)
-                        "Malicious" -> Color(0xFF1E90FF)
-                        else -> Color(0xFF1E3A5F)
+                        "Malicious"  -> Color(0xFFFF4444)   // fixed: was blue
+                        else         -> Color(0xFF1E3A5F)
                     }
-
-                    val isExpanded = expandedItem == name
+                    val isExpanded    = expandedItem == item.packageName
+                    val isQuarantined = item.packageName in quarantinedPackages
 
                     Column(
                         modifier = Modifier
@@ -230,20 +216,16 @@ fun AiRiskReportScreen(
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color(0xFF1C2B3A))
                             .clickable {
-                                val ctx = navController.context
-                                val pkg = ctx.packageManager
-                                    .getInstalledApplications(0)
-                                    .find { app ->
-                                        ctx.packageManager.getApplicationLabel(app).toString() == name
-                                    }?.packageName
-
-                                if (pkg != null) {
-                                    navController.navigate(Screen.ThreatDetail.createRoute(pkg))
+                                if (item.packageName.isNotBlank()) {
+                                    navController.navigate(
+                                        Screen.ThreatDetail.createRoute(item.packageName)
+                                    )
                                 } else {
-                                    expandedItem = if (isExpanded) null else name
+                                    expandedItem = if (isExpanded) null else item.packageName
                                 }
                             }
                     ) {
+                        // ── Row header ────────────────────────────────
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -258,33 +240,43 @@ fun AiRiskReportScreen(
                                         .clip(CircleShape)
                                         .background(rowColor)
                                 )
-
                                 Spacer(Modifier.width(10.dp))
-
                                 Column {
                                     Text(
-                                        text = name,
+                                        text = item.appName,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
                                         color = Color(0xFFCDD9E5)
                                     )
-
-                                    Text(
-                                        text = status,
-                                        fontSize = 13.sp,
-                                        color = rowColor
-                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = item.status,
+                                            fontSize = 13.sp,
+                                            color = rowColor
+                                        )
+                                        // Quarantine badge
+                                        if (isQuarantined) {
+                                            Text(
+                                                text = "🔒 Quarantined",
+                                                fontSize = 11.sp,
+                                                color = Color(0xFFFF9800)
+                                            )
+                                        }
+                                    }
                                 }
                             }
-
                             Text(
-                                text = score.toString(),
+                                text = item.riskScore.toString(),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = Color(0xFFCDD9E5)
                             )
                         }
 
+                        // ── Expanded panel ────────────────────────────
                         AnimatedVisibility(
                             visible = isExpanded,
                             enter = expandVertically(),
@@ -298,46 +290,36 @@ fun AiRiskReportScreen(
                             ) {
                                 Column {
                                     Text(
-                                        text = "Risk Score: $score / 100",
+                                        text = "Risk Score: ${item.riskScore} / 100",
                                         fontWeight = FontWeight.Bold,
                                         color = rowColor,
                                         fontSize = 13.sp
                                     )
-
                                     Spacer(Modifier.height(4.dp))
-
                                     Text(
-                                        text = when (status) {
-                                            "Safe" ->
-                                                "This app has no known threats. It behaves normally and requests only standard permissions."
-
-                                            "Suspicious" ->
-                                                "This app shows unusual behaviour. It may request excessive permissions or communicate with unknown servers."
-
-                                            "Malicious" ->
-                                                "This app has been identified as malicious. It is strongly recommended to uninstall it immediately."
-
-                                            else ->
-                                                "No additional information available."
+                                        text = when (item.status) {
+                                            "Safe"       -> "No known threats. Behaves normally and requests only standard permissions."
+                                            "Suspicious" -> "Unusual behaviour detected. May request excessive permissions or contact unknown servers."
+                                            "Malicious"  -> "Identified as malicious. Strongly recommended to quarantine or uninstall immediately."
+                                            else         -> "No additional information available."
                                         },
                                         color = Color(0xFFCDD9E5),
                                         fontSize = 13.sp
                                     )
-
                                     Spacer(Modifier.height(8.dp))
 
+                                    // ── Action buttons ────────────────
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
+                                        // Mark Safe
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(Color(0xFF2E7D32))
-                                                .clickable {
-                                                    vm.markSafe(name)
-                                                }
+                                                .clickable { vm.markSafe(item.appName) }
                                                 .padding(vertical = 8.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
@@ -349,19 +331,48 @@ fun AiRiskReportScreen(
                                             )
                                         }
 
+                                        // Quarantine / Restore toggle
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .clip(RoundedCornerShape(8.dp))
-                                                .background(Color(0xFFB22222))
+                                                .background(
+                                                    if (isQuarantined) Color(0xFF5D4037)
+                                                    else Color(0xFFB22222)
+                                                )
                                                 .clickable {
-                                                    vm.markMalicious(name)
+                                                    if (isQuarantined) {
+                                                        // Restore
+                                                        QuarantineManager.restore(
+                                                            context, item.packageName
+                                                        )
+                                                        quarantinedPackages =
+                                                            quarantinedPackages - item.packageName
+                                                    } else {
+                                                        // Build a minimal ScanResult to pass in
+                                                        val fakeResult = RealScanner.ScanResult(
+                                                            appName     = item.appName,
+                                                            packageName = item.packageName,
+                                                            riskScore   = item.riskScore,
+                                                            label       = item.status,
+                                                            reasons     = listOf("Manually quarantined from Risk Report"),
+                                                            isSideloaded  = false,
+                                                            isBlacklisted = false,
+                                                            isWhitelisted = false,
+                                                            mlScore       = item.riskScore.toFloat()
+                                                        )
+                                                        QuarantineManager.quarantine(context, fakeResult)
+                                                        quarantinedPackages =
+                                                            quarantinedPackages + item.packageName
+                                                        vm.markMalicious(item.appName, item.riskScore)
+                                                    }
                                                 }
                                                 .padding(vertical = 8.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                text = "✗ Mark Malicious",
+                                                text = if (isQuarantined) "↩ Restore App"
+                                                else "🔒 Quarantine",
                                                 color = Color.White,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold

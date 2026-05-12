@@ -47,7 +47,7 @@ fun TestudoApp() {
 
     val scanResults = homeState.scanResults
     val alertCount = scanResults.count {
-        it.second == "Malicious" || it.second == "Suspicious"
+        it.status == "Malicious" || it.status == "Suspicious"
     }
 
     Scaffold(

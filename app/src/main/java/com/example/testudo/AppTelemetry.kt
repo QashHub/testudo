@@ -3,7 +3,6 @@ package com.example.testudo
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import java.io.File
 import java.util.zip.ZipFile
 
 /**
@@ -97,28 +96,22 @@ object AppTelemetry {
         val packageName = appInfo.packageName
         val apkPath = appInfo.sourceDir
 
-        // Get permissions
         val permissions = try {
             pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
                 .requestedPermissions?.toSet() ?: emptySet()
         } catch (e: Exception) { emptySet<String>() }
 
-        // Scan DEX content for API calls
         val dexContent = extractDexContent(apkPath)
 
-        // Build feature vector
         val features = FloatArray(FEATURE_ORDER.size) { i ->
             val feature = FEATURE_ORDER[i]
             when {
-                // Permission features — check manifest permissions
                 PERMISSION_FEATURES.contains(feature) -> {
                     if (permissions.any { it.contains(feature) }) 1f else 0f
                 }
-                // Intent features — check in DEX or manifest
                 INTENT_FEATURES.contains(feature) -> {
                     if (dexContent.contains(feature)) 1f else 0f
                 }
-                // API call features — check in DEX bytecode
                 else -> {
                     if (dexContent.contains(feature)) 1f else 0f
                 }
@@ -130,7 +123,6 @@ object AppTelemetry {
 
     /**
      * Extract readable strings from APK DEX files
-     * Looks for API call signatures and class names
      */
     private fun extractDexContent(apkPath: String): String {
         return try {
@@ -138,11 +130,10 @@ object AppTelemetry {
             ZipFile(apkPath).use { zip ->
                 val dexEntries = zip.entries().asSequence()
                     .filter { it.name.endsWith(".dex") }
-                    .take(3) // scan first 3 dex files for speed
+                    .take(3)
 
                 for (entry in dexEntries) {
                     val bytes = zip.getInputStream(entry).readBytes()
-                    // Extract ASCII strings from DEX
                     sb.append(String(bytes, Charsets.ISO_8859_1))
                 }
             }
@@ -151,23 +142,42 @@ object AppTelemetry {
     }
 
     /**
-     * Get all user-installed apps for scanning
+     * Get all apps for scanning — user apps first, system junk filtered out
      */
     fun getUserApps(context: Context): List<ApplicationInfo> {
         val pm = context.packageManager
-        val all = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+
+        val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE)
+                as android.app.usage.UsageStatsManager
+
+        val now = System.currentTimeMillis()
+        val thirtyDaysAgo = now - (30L * 24 * 60 * 60 * 1000)
+
+        val recentlyUsed = usageManager
+            .queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_MONTHLY,
+                thirtyDaysAgo,
+                now
+            )
+            ?.filter { it.totalTimeInForeground > 0 }
+            ?.sortedByDescending { it.lastTimeUsed }
+            ?.map { it.packageName }
+            ?.take(30)
+            ?: emptyList()
+
+        // Fall back to all user-installed apps if usage stats unavailable
+        val fallback = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+            .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
             .filter { it.packageName != "com.example.testudo" }
 
-        // User-installed apps first, then system apps
-        val userApps = all.filter {
-            (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
-                    (it.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-        }
-        val systemApps = all.filter {
-            (it.flags and ApplicationInfo.FLAG_SYSTEM) != 0 &&
-                    (it.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
-        }
+        if (recentlyUsed.isEmpty()) return fallback
 
-        return (userApps + systemApps).take(30)
+        // Resolve package names back to ApplicationInfo
+        return recentlyUsed
+            .filter { pkg -> pkg != "com.example.testudo" }
+            .mapNotNull { pkg ->
+                try { pm.getApplicationInfo(pkg, PackageManager.GET_META_DATA) }
+                catch (e: Exception) { null }
+            }
     }
 }
