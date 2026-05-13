@@ -38,7 +38,8 @@ import com.example.testudo.data.local.db.entity.ScanHistoryEntity
 import kotlinx.coroutines.launch
 import com.example.testudo.data.local.db.entity.ThreatLogEntity
 import com.example.testudo.data.local.db.entity.QuarantineRecordEntity
-
+import com.example.testudo.data.local.db.entity.VirusSignatureEntity
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun MainScreen(
@@ -51,8 +52,52 @@ fun MainScreen(
     val scanHistoryDao = remember { db.scanHistoryDao() }
     val threatLogDao = remember { db.threatLogDao() }
     val quarantineDao = remember { db.quarantineDao() }
+    val virusSignatureDao = remember { db.virusSignatureDao() }
     val coroutineScope = rememberCoroutineScope()
 
+    LaunchedEffect(Unit) {
+        val existingSignatures = virusSignatureDao.getAllVirusSignatures()
+
+        if (existingSignatures.isEmpty()) {
+            val sampleSignatures = listOf(
+                VirusSignatureEntity(
+                    signatureHash = "MALWARE_HASH_001",
+                    virusName = "Trojan.Testudo.A",
+                    severity = "High",
+                    description = "Sample Trojan signature used for local malware detection testing.",
+                    recommendedAction = "Quarantine",
+                    definitionVersion = "demo-v1",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = null
+                ),
+                VirusSignatureEntity(
+                    signatureHash = "MALWARE_HASH_002",
+                    virusName = "Spyware.Testudo.B",
+                    severity = "Medium",
+                    description = "Sample spyware signature used to simulate suspicious behaviour detection.",
+                    recommendedAction = "Review",
+                    definitionVersion = "demo-v1",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = null
+                ),
+                VirusSignatureEntity(
+                    signatureHash = "MALWARE_HASH_003",
+                    virusName = "Adware.Testudo.C",
+                    severity = "Low",
+                    description = "Sample adware signature for demonstration purposes.",
+                    recommendedAction = "Monitor",
+                    definitionVersion = "demo-v1",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = null
+                )
+            )
+
+            virusSignatureDao.insertVirusSignatures(sampleSignatures)
+            Log.d("DB_VIRUS_TEST", "Seeded virus signatures: ${sampleSignatures.size}")
+        } else {
+            Log.d("DB_VIRUS_TEST", "Virus signatures already exist: ${existingSignatures.size}")
+        }
+    }
     fun performScan() {
         coroutineScope.launch {
             val scanRecord = ScanHistoryEntity(
