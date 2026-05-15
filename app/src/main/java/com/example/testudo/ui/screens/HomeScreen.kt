@@ -24,10 +24,22 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.testudo.navigation.Screen
 import androidx.lifecycle.viewmodel.compose.viewModel
+
 import com.example.testudo.ui.components.TitleSection
 import com.example.testudo.ui.components.ScanButton
 import com.example.testudo.ui.components.SurroundingButtons
 import com.example.testudo.viewmodel.HomeViewModel
+import android.util.Log
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.example.testudo.data.local.db.DatabaseProvider
+import com.example.testudo.data.local.db.entity.ScanHistoryEntity
+import kotlinx.coroutines.launch
+import com.example.testudo.data.local.db.entity.ThreatLogEntity
+import com.example.testudo.data.local.db.entity.QuarantineRecordEntity
+import com.example.testudo.data.local.db.entity.VirusSignatureEntity
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun MainScreen(
@@ -35,6 +47,117 @@ fun MainScreen(
     vm: HomeViewModel = viewModel()
 ) {
     val state by vm.uiState
+    val context = LocalContext.current
+    val db = remember { DatabaseProvider.getDatabase(context) }
+    val scanHistoryDao = remember { db.scanHistoryDao() }
+    val threatLogDao = remember { db.threatLogDao() }
+    val quarantineDao = remember { db.quarantineDao() }
+    val virusSignatureDao = remember { db.virusSignatureDao() }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val existingSignatures = virusSignatureDao.getAllVirusSignatures()
+
+        if (existingSignatures.isEmpty()) {
+            val sampleSignatures = listOf(
+                VirusSignatureEntity(
+                    signatureHash = "MALWARE_HASH_001",
+                    virusName = "Trojan.Testudo.A",
+                    severity = "High",
+                    description = "Sample Trojan signature used for local malware detection testing.",
+                    recommendedAction = "Quarantine",
+                    definitionVersion = "demo-v1",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = null
+                ),
+                VirusSignatureEntity(
+                    signatureHash = "MALWARE_HASH_002",
+                    virusName = "Spyware.Testudo.B",
+                    severity = "Medium",
+                    description = "Sample spyware signature used to simulate suspicious behaviour detection.",
+                    recommendedAction = "Review",
+                    definitionVersion = "demo-v1",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = null
+                ),
+                VirusSignatureEntity(
+                    signatureHash = "MALWARE_HASH_003",
+                    virusName = "Adware.Testudo.C",
+                    severity = "Low",
+                    description = "Sample adware signature for demonstration purposes.",
+                    recommendedAction = "Monitor",
+                    definitionVersion = "demo-v1",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = null
+                )
+            )
+
+            virusSignatureDao.insertVirusSignatures(sampleSignatures)
+            Log.d("DB_VIRUS_TEST", "Seeded virus signatures: ${sampleSignatures.size}")
+        } else {
+            Log.d("DB_VIRUS_TEST", "Virus signatures already exist: ${existingSignatures.size}")
+        }
+    }
+    fun performScan() {
+        coroutineScope.launch {
+            val scanRecord = ScanHistoryEntity(
+                packageName = "com.example.testapp",
+                appName = "Test App",
+                scannedAt = System.currentTimeMillis(),
+                riskScore = 65,
+                riskLevel = "Suspicious",
+                behaviorSummary = "Suspicious background activity detected.",
+                actionTaken = "Review Required",
+                isManualScan = true,
+                modelVersion = "demo-v1"
+            )
+
+            val scanId = scanHistoryDao.insertScanHistory(scanRecord)
+
+            if (scanRecord.riskLevel == "Suspicious" || scanRecord.riskLevel == "Malicious") {
+                val threatLog = ThreatLogEntity(
+                    scanHistoryId = scanId,
+                    packageName = scanRecord.packageName,
+                    appName = scanRecord.appName,
+                    threatType = "Suspicious Behaviour",
+                    severity = scanRecord.riskLevel,
+                    detectionReason = scanRecord.behaviorSummary,
+                    detectedAt = System.currentTimeMillis(),
+                    confidenceScore = 0.75f,
+                    recommendedAction = "Review app activity"
+                )
+
+                val threatLogId = threatLogDao.insertThreatLog(threatLog)
+                val quarantineRecord = QuarantineRecordEntity(
+                    threatLogId = threatLogId,
+
+                    packageName = scanRecord.packageName,
+                    appName = scanRecord.appName,
+
+                    quarantinedAt = System.currentTimeMillis(),
+                    quarantineReason = "Suspicious application quarantined",
+
+                    actionStatus = "Quarantined",
+
+                    evidenceSnapshotPath = null,
+
+                    permissionsRevoked = true,
+                    backgroundExecutionBlocked = true,
+                    isRestored = false,
+                    )
+
+                quarantineDao.insertQuarantineRecord(quarantineRecord)
+            }
+
+            val allScans = scanHistoryDao.getAllScanHistory()
+            val allThreats = threatLogDao.getAllThreatLogs()
+            val allQuarantine = quarantineDao.getAllQuarantineRecords()
+
+            Log.d("DB_SCAN_TEST", "Total scan records: ${allScans.size}")
+            Log.d("DB_THREAT_TEST", "Total threat records: ${allThreats.size}")
+            Log.d("DB_QUARANTINE_TEST", "Total quarantine records: ${allQuarantine.size}")
+        }
+    }
 
     Box(
         modifier = Modifier
