@@ -40,6 +40,8 @@ import com.example.testudo.data.local.db.entity.ThreatLogEntity
 import com.example.testudo.data.local.db.entity.QuarantineRecordEntity
 import com.example.testudo.data.local.db.entity.VirusSignatureEntity
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 @Composable
 fun MainScreen(
@@ -54,6 +56,8 @@ fun MainScreen(
     val quarantineDao = remember { db.quarantineDao() }
     val virusSignatureDao = remember { db.virusSignatureDao() }
     val coroutineScope = rememberCoroutineScope()
+    val userProfileDao = remember { db.userProfileDao() }
+    var userName by remember { mutableStateOf("John") }
 
     LaunchedEffect(Unit) {
         val existingSignatures = virusSignatureDao.getAllVirusSignatures()
@@ -96,7 +100,11 @@ fun MainScreen(
             Log.d("DB_VIRUS_TEST", "Seeded virus signatures: ${sampleSignatures.size}")
         } else {
             Log.d("DB_VIRUS_TEST", "Virus signatures already exist: ${existingSignatures.size}")
+
+
         }
+        val profile = userProfileDao.getUserProfile()
+        userName = profile?.name ?: "User"
     }
     fun performScan() {
         coroutineScope.launch {
@@ -174,7 +182,7 @@ fun MainScreen(
             Spacer(Modifier.height(40.dp))
 
             Text(
-                text = "Hello John!",
+                text = "Hello $userName!",
                 color = Color.White
             )
 
