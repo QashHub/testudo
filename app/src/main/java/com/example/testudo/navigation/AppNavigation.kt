@@ -13,10 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.testudo.ui.components.BottomNavBar
 import com.example.testudo.ui.screens.AiRiskReportScreen
 import com.example.testudo.ui.screens.AlertsScreen
@@ -91,7 +93,6 @@ fun TestudoApp() {
 
             composable(Screen.Settings.route) {
                 SettingsScreen(navController)
-
             }
 
             composable(Screen.AIRiskReport.route) {
@@ -101,9 +102,20 @@ fun TestudoApp() {
                 )
             }
 
-            composable("threat_detail/{packageName}") { backStackEntry ->
-                val pkg = backStackEntry.arguments?.getString("packageName") ?: ""
-                ThreatDetailScreen(navController, pkg)
+            composable(
+                route = Screen.ThreatDetail.route,
+                arguments = listOf(
+                    navArgument("packageName") { type = NavType.StringType },
+                    navArgument("riskScore") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val packageName = backStackEntry.arguments?.getString("packageName") ?: ""
+                val riskScore = backStackEntry.arguments?.getString("riskScore")
+                ThreatDetailScreen(
+                    navController = navController,
+                    packageName = packageName,
+                    passedRiskScore = riskScore
+                )
             }
 
             composable(Screen.Status.route) {
