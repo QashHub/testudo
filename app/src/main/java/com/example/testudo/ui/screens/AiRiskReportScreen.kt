@@ -217,8 +217,9 @@ fun AiRiskReportScreen(
                             .background(Color(0xFF1C2B3A))
                             .clickable {
                                 if (item.packageName.isNotBlank()) {
+                                    // ✅ FIXED: Pass riskScore to detail screen
                                     navController.navigate(
-                                        Screen.ThreatDetail.createRoute(item.packageName)
+                                        Screen.ThreatDetail.createRoute(item.packageName, item.riskScore.toString())
                                     )
                                 } else {
                                     expandedItem = if (isExpanded) null else item.packageName

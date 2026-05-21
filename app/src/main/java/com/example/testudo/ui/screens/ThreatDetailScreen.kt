@@ -39,16 +39,30 @@ private val ORANGE_WARN    = Color(0xFFF9A825)
 private val GREEN_SAFE     = Color(0xFF2E7D32)
 
 @Composable
-fun ThreatDetailScreen(navController: NavHostController, packageName: String) {
+fun ThreatDetailScreen(
+    navController: NavHostController,
+    packageName: String,
+    passedRiskScore: String? = null  // ✅ NEW: Accept passed risk score
+) {
 
     val context = navController.context
     var scanResult by remember { mutableStateOf<ApkScanner.ApkScanResult?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
+    // ✅ NEW: Use passed risk score if available, otherwise scan
+    var displayRiskScore by remember { mutableStateOf(passedRiskScore?.toIntOrNull() ?: 0) }
+
     LaunchedEffect(packageName) {
         withContext(Dispatchers.IO) {
             try {
                 scanResult = ApkScanner.scanInstalledApp(context, packageName)
+                // ✅ NEW: If no passed score, use the scanned result's score
+                if (passedRiskScore == null && scanResult != null) {
+                    displayRiskScore = scanResult!!.riskScore
+                } else if (passedRiskScore != null) {
+                    // ✅ Use the passed score
+                    displayRiskScore = passedRiskScore.toInt()
+                }
             } catch (e: Exception) { }
             isLoading = false
         }
@@ -106,14 +120,15 @@ fun ThreatDetailScreen(navController: NavHostController, packageName: String) {
                 ) {
                     // ── Risk Score Header ──────────────────────────────
                     item {
+                        // ✅ FIXED: Use displayRiskScore instead of result.riskScore
                         val bgColor = when {
-                            result.riskScore >= 60 -> RED_DANGER
-                            result.riskScore >= 30 -> ORANGE_WARN
+                            displayRiskScore >= 60 -> RED_DANGER
+                            displayRiskScore >= 30 -> ORANGE_WARN
                             else                   -> GREEN_SAFE
                         }
                         val label = when {
-                            result.riskScore >= 60 -> "MALICIOUS"
-                            result.riskScore >= 30 -> "SUSPICIOUS"
+                            displayRiskScore >= 60 -> "MALICIOUS"
+                            displayRiskScore >= 30 -> "SUSPICIOUS"
                             else                   -> "SAFE"
                         }
 
@@ -133,7 +148,7 @@ fun ThreatDetailScreen(navController: NavHostController, packageName: String) {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = result.riskScore.toString(),
+                                        text = displayRiskScore.toString(),  // ✅ FIXED
                                         fontSize = 26.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
